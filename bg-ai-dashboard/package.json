@@ -1,0 +1,61 @@
+{
+  "name": "bg-ai-dashboard",
+  "version": "1.0.0",
+  "description": "BehaviorGuard AI Dashboard Service - AI monitoring and analytics interface",
+  "main": "dist/index.js",
+  "scripts": {
+    "dev": "next dev -p 3003",
+    "build": "next build",
+    "start": "next start -p 3003",
+    "test": "vitest",
+    "test:coverage": "vitest --coverage",
+    "lint": "next lint",
+    "type-check": "tsc --noEmit"
+  },
+  "keywords": [
+    "ai-monitoring",
+    "analytics",
+    "dashboard",
+    "real-time",
+    "nextjs"
+  ],
+  "dependencies": {
+    "next": "^14.0.4",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
+    "typescript": "^5.3.3",
+    "@types/node": "^20.10.5",
+    "@types/react": "^18.2.45",
+    "@types/react-dom": "^18.2.18",
+    "tailwindcss": "^3.4.0",
+    "autoprefixer": "^10.4.16",
+    "postcss": "^8.4.32",
+    "clsx": "^2.0.0",
+    "lucide-react": "^0.303.0",
+    "recharts": "^2.8.0",
+    "framer-motion": "^10.16.16",
+    "socket.io-client": "^4.7.4",
+    "axios": "^1.6.2",
+    "zod": "^3.22.4",
+    "date-fns": "^3.0.6",
+    "react-hook-form": "^7.48.2",
+    "@hookform/resolvers": "^3.3.2",
+    "jsonwebtoken": "^9.0.2",
+    "js-cookie": "^3.0.5"
+  },
+  "devDependencies": {
+    "@types/jsonwebtoken": "^9.0.5",
+    "@types/js-cookie": "^3.0.6",
+    "eslint": "^8.56.0",
+    "eslint-config-next": "^14.0.4",
+    "@typescript-eslint/eslint-plugin": "^6.17.0",
+    "@typescript-eslint/parser": "^6.17.0",
+    "vitest": "^1.1.0",
+    "@vitest/coverage-v8": "^1.1.0",
+    "@testing-library/react": "^14.1.2",
+    "@testing-library/jest-dom": "^6.1.6"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}

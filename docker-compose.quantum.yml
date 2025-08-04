@@ -1,0 +1,322 @@
+version: '3.8'
+
+services:
+  # Quantum Gateway Service
+  bg-quantum-gateway:
+    build:
+      context: ./bg-quantum-gateway
+      dockerfile: Dockerfile
+    ports:
+      - "3005:3005"
+    environment:
+      - NODE_ENV=development
+      - PORT=3005
+      - JWT_SECRET=${JWT_SECRET}
+      - REDIS_URL=redis://redis:6379
+      - DATABASE_URL=postgresql://postgres:password@postgres:5432/bg_quantum
+      - QUANTUM_ENABLED=true
+      - QUANTUM_KEM_ALGORITHM=Kyber768
+      - QUANTUM_SIG_ALGORITHM=Dilithium3
+      - LIBOQS_PATH=/usr/local/lib
+    depends_on:
+      - redis
+      - postgres
+    volumes:
+      - ./shared/types:/app/shared/types:ro
+      - ./shared/quantum:/app/shared/quantum:ro
+      - /usr/local/lib/liboqs.so:/usr/local/lib/liboqs.so:ro
+      - /usr/local/include/oqs:/usr/local/include/oqs:ro
+    networks:
+      - bg-network
+    deploy:
+      resources:
+        limits:
+          memory: 2G
+          cpus: '1.0'
+        reservations:
+          memory: 1G
+          cpus: '0.5'
+
+  # NVIDIA Morpheus Threat Detection
+  morpheus-threat-detection:
+    image: nvcr.io/nvidia/morpheus/morpheus:22.11-runtime
+    container_name: bg-morpheus-threat
+    ports:
+      - "8888:8888"  # Jupyter notebook
+      - "8889:8889"  # Morpheus API
+    environment:
+      - CUDA_VISIBLE_DEVICES=0
+      - MORPHEUS_ROOT=/workspace
+      - PYTHONPATH=/workspace
+      - KAFKA_BOOTSTRAP_SERVERS=kafka:9092
+      - TRITON_SERVER_URL=triton-inference-server:8001
+      - REDIS_URL=redis://redis:6379
+    volumes:
+      - ./morpheus-config:/workspace/config
+      - ./morpheus-data:/workspace/data
+      - ./morpheus-models:/workspace/models
+      - ./morpheus-pipelines:/workspace/pipelines
+      - ./logs:/workspace/logs
+    depends_on:
+      - kafka
+      - triton-inference-server
+      - redis
+    networks:
+      - bg-network
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+        limits:
+          memory: 16G
+        reservations:
+          memory: 8G
+
+  # Triton Inference Server
+  triton-inference-server:
+    image: nvcr.io/nvidia/tritonserver:22.12-py3
+    container_name: bg-triton-server
+    ports:
+      - "8000:8000"  # HTTP
+      - "8001:8001"  # GRPC
+      - "8002:8002"  # Metrics
+    environment:
+      - CUDA_VISIBLE_DEVICES=0
+    volumes:
+      - ./triton-models:/models
+    command: >
+      tritonserver 
+      --model-repository=/models 
+      --strict-model-config=false
+      --log-verbose=1
+      --backend-config=python,shm-default-byte-size=134217728
+    networks:
+      - bg-network
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+        limits:
+          memory: 8G
+        reservations:
+          memory: 4G
+
+  # Apache Kafka for high-throughput data streaming
+  kafka:
+    image: confluentinc/cp-kafka:7.4.0
+    container_name: bg-kafka
+    ports:
+      - "9092:9092"
+      - "29092:29092"
+    environment:
+      KAFKA_BROKER_ID: 1
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://localhost:9092,PLAINTEXT_HOST://kafka:29092
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
+      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT_HOST
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: 'true'
+      KAFKA_NUM_PARTITIONS: 8
+      KAFKA_DEFAULT_REPLICATION_FACTOR: 1
+      # Performance tuning
+      KAFKA_LOG_SEGMENT_BYTES: 1073741824
+      KAFKA_LOG_RETENTION_MS: 86400000
+      KAFKA_LOG_CLEANUP_POLICY: delete
+      KAFKA_COMPRESSION_TYPE: lz4
+    depends_on:
+      - zookeeper
+    volumes:
+      - kafka_data:/var/lib/kafka/data
+    networks:
+      - bg-network
+    deploy:
+      resources:
+        limits:
+          memory: 4G
+          cpus: '2.0'
+        reservations:
+          memory: 2G
+          cpus: '1.0'
+
+  # Zookeeper for Kafka coordination
+  zookeeper:
+    image: confluentinc/cp-zookeeper:7.4.0
+    container_name: bg-zookeeper
+    ports:
+      - "2181:2181"
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+      ZOOKEEPER_TICK_TIME: 2000
+      ZOOKEEPER_INIT_LIMIT: 5
+      ZOOKEEPER_SYNC_LIMIT: 2
+    volumes:
+      - zookeeper_data:/var/lib/zookeeper/data
+      - zookeeper_logs:/var/lib/zookeeper/log
+    networks:
+      - bg-network
+    deploy:
+      resources:
+        limits:
+          memory: 1G
+          cpus: '0.5'
+
+  # Redis with Quantum-specific configuration
+  redis-quantum:
+    image: redis:7-alpine
+    container_name: bg-redis-quantum
+    ports:
+      - "6380:6379"  # Different port to avoid conflicts
+    environment:
+      - REDIS_PASSWORD=${REDIS_PASSWORD:-quantum-secure-password}
+    volumes:
+      - redis_quantum_data:/data
+      - ./shared/redis/quantum.conf:/usr/local/etc/redis/redis.conf
+    command: >
+      redis-server /usr/local/etc/redis/redis.conf
+      --requirepass quantum-secure-password
+      --maxmemory 1gb
+      --maxmemory-policy allkeys-lru
+      --save 900 1
+      --save 300 10
+      --save 60 10000
+    networks:
+      - bg-network
+    deploy:
+      resources:
+        limits:
+          memory: 1G
+          cpus: '0.5'
+
+  # PostgreSQL with Quantum schema extensions
+  postgres-quantum:
+    image: postgres:15-alpine
+    container_name: bg-postgres-quantum
+    ports:
+      - "5433:5432"  # Different port to avoid conflicts
+    environment:
+      - POSTGRES_USER=quantum_user
+      - POSTGRES_PASSWORD=${POSTGRES_QUANTUM_PASSWORD:-quantum-secure-db-password}
+      - POSTGRES_DB=quantum_security
+      - POSTGRES_INITDB_ARGS=--encoding=UTF-8 --lc-collate=C.UTF-8 --lc-ctype=C.UTF-8
+    volumes:
+      - postgres_quantum_data:/var/lib/postgresql/data
+      - ./shared/database/quantum-schema.sql:/docker-entrypoint-initdb.d/01-quantum-schema.sql
+      - ./shared/database/quantum-indexes.sql:/docker-entrypoint-initdb.d/02-quantum-indexes.sql
+      - ./shared/database/quantum-functions.sql:/docker-entrypoint-initdb.d/03-quantum-functions.sql
+    networks:
+      - bg-network
+    deploy:
+      resources:
+        limits:
+          memory: 2G
+          cpus: '1.0'
+        reservations:
+          memory: 1G
+          cpus: '0.5'
+
+  # Quantum Key Management Service (Hardware Security Module simulation)
+  quantum-hsm:
+    image: openjdk:11-jre-slim
+    container_name: bg-quantum-hsm
+    ports:
+      - "8443:8443"
+    environment:
+      - HSM_MODE=development
+      - ENTROPY_SOURCE=random
+      - KEY_STORAGE_PATH=/hsm/keys
+      - AUDIT_LOG_PATH=/hsm/logs
+    volumes:
+      - quantum_hsm_keys:/hsm/keys
+      - quantum_hsm_logs:/hsm/logs
+      - ./shared/hsm/config.properties:/hsm/config/config.properties
+    command: >
+      sh -c "echo 'Quantum HSM Simulator Starting...' && 
+             mkdir -p /hsm/keys /hsm/logs && 
+             echo 'HSM Ready for quantum key operations' && 
+             tail -f /dev/null"
+    networks:
+      - bg-network
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+          cpus: '0.25'
+
+  # Quantum Performance Monitor
+  quantum-monitor:
+    image: node:18-alpine
+    container_name: bg-quantum-monitor
+    ports:
+      - "3006:3006"
+    environment:
+      - NODE_ENV=development
+      - PORT=3006
+      - QUANTUM_GATEWAY_URL=http://bg-quantum-gateway:3005
+      - MORPHEUS_URL=http://morpheus-threat-detection:8889
+      - TRITON_URL=http://triton-inference-server:8002
+      - PROMETHEUS_URL=http://prometheus:9090
+    volumes:
+      - ./shared/monitoring/quantum:/app
+      - ./logs:/app/logs
+    working_dir: /app
+    command: >
+      sh -c "npm install && npm run dev"
+    depends_on:
+      - bg-quantum-gateway
+      - morpheus-threat-detection
+      - triton-inference-server
+    networks:
+      - bg-network
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+          cpus: '0.5'
+
+  # Kafka UI for managing topics and monitoring
+  kafka-ui:
+    image: provectuslabs/kafka-ui:latest
+    container_name: bg-kafka-ui
+    ports:
+      - "8080:8080"
+    environment:
+      KAFKA_CLUSTERS_0_NAME: bg-cluster
+      KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: kafka:29092
+      KAFKA_CLUSTERS_0_ZOOKEEPER: zookeeper:2181
+    depends_on:
+      - kafka
+      - zookeeper
+    networks:
+      - bg-network
+
+volumes:
+  kafka_data:
+    driver: local
+  zookeeper_data:
+    driver: local
+  zookeeper_logs:
+    driver: local
+  redis_quantum_data:
+    driver: local
+  postgres_quantum_data:
+    driver: local
+  quantum_hsm_keys:
+    driver: local
+  quantum_hsm_logs:
+    driver: local
+  triton_models:
+    driver: local
+  morpheus_data:
+    driver: local
+
+networks:
+  bg-network:
+    external: true

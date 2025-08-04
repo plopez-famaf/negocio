@@ -1,0 +1,198 @@
+version: '3.8'
+
+services:
+  # Main Web Service (existing)
+  bg-web:
+    build:
+      context: ./bg-web
+      dockerfile: Dockerfile
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=development
+      - IDENTITY_AI_SERVICE_URL=http://bg-identity-ai:3001
+      - THREAT_AI_SERVICE_URL=http://bg-threat-ai:3002
+      - AI_DASHBOARD_SERVICE_URL=http://bg-ai-dashboard:3003
+      - MOBILE_AI_SERVICE_URL=http://bg-mobile-ai:3004
+      - QUANTUM_GATEWAY_SERVICE_URL=http://bg-quantum-gateway:3005
+    depends_on:
+      - bg-identity-ai
+      - bg-threat-ai
+      - bg-quantum-gateway
+      - redis
+      - postgres
+    networks:
+      - bg-network
+
+  # Identity AI Service
+  bg-identity-ai:
+    build:
+      context: ./bg-identity-ai
+      dockerfile: Dockerfile
+    ports:
+      - "3001:3001"
+    environment:
+      - NODE_ENV=development
+      - PORT=3001
+      - JWT_SECRET=${JWT_SECRET}
+      - REDIS_URL=redis://redis:6379
+      - DATABASE_URL=postgresql://postgres:password@postgres:5432/bg_identity_ai
+    depends_on:
+      - redis
+      - postgres
+    volumes:
+      - ./shared/types:/app/shared/types:ro
+    networks:
+      - bg-network
+
+  # Threat AI Service
+  bg-threat-ai:
+    build:
+      context: ./bg-threat-ai
+      dockerfile: Dockerfile
+    ports:
+      - "3002:3002"
+    environment:
+      - NODE_ENV=development
+      - PORT=3002
+      - JWT_SECRET=${JWT_SECRET}
+      - REDIS_URL=redis://redis:6379
+      - DATABASE_URL=postgresql://postgres:password@postgres:5432/bg_threat_ai
+    depends_on:
+      - redis
+      - postgres
+    volumes:
+      - ./shared/types:/app/shared/types:ro
+    networks:
+      - bg-network
+
+  # AI Dashboard Service
+  bg-ai-dashboard:
+    build:
+      context: ./bg-ai-dashboard
+      dockerfile: Dockerfile
+    ports:
+      - "3003:3003"
+    environment:
+      - NODE_ENV=development
+      - PORT=3003
+      - IDENTITY_AI_SERVICE_URL=http://bg-identity-ai:3001
+      - THREAT_AI_SERVICE_URL=http://bg-threat-ai:3002
+      - NEXT_PUBLIC_IDENTITY_AI_SERVICE_URL=http://localhost:3001
+      - NEXT_PUBLIC_THREAT_AI_SERVICE_URL=http://localhost:3002
+    depends_on:
+      - bg-identity-ai
+      - bg-threat-ai
+    networks:
+      - bg-network
+
+  # Mobile AI Service (Backend)
+  bg-mobile-ai:
+    build:
+      context: ./bg-mobile-ai
+      dockerfile: Dockerfile
+    ports:
+      - "3004:3004"
+    environment:
+      - NODE_ENV=development
+      - PORT=3004
+      - JWT_SECRET=${JWT_SECRET}
+      - IDENTITY_AI_SERVICE_URL=http://bg-identity-ai:3001
+      - THREAT_AI_SERVICE_URL=http://bg-threat-ai:3002
+      - WEB_SERVICE_URL=http://bg-web:3000
+    depends_on:
+      - bg-identity-ai
+      - bg-threat-ai
+      - bg-web
+    networks:
+      - bg-network
+
+  # Quantum Gateway Service
+  bg-quantum-gateway:
+    build:
+      context: ./bg-quantum-gateway
+      dockerfile: Dockerfile
+    ports:
+      - "3005:3005"
+    environment:
+      - NODE_ENV=development
+      - PORT=3005
+      - JWT_SECRET=${JWT_SECRET}
+      - REDIS_URL=redis://redis:6379/1
+      - DATABASE_URL=postgresql://postgres:password@postgres:5432/bg_quantum
+      - QUANTUM_ENABLED=true
+      - QUANTUM_KEM_ALGORITHM=Kyber768
+      - QUANTUM_SIG_ALGORITHM=Dilithium3
+    depends_on:
+      - redis
+      - postgres
+    volumes:
+      - ./shared/types:/app/shared/types:ro
+    networks:
+      - bg-network
+
+  # Shared Services
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    command: redis-server --appendonly yes
+    networks:
+      - bg-network
+
+  postgres:
+    image: postgres:15-alpine
+    ports:
+      - "5432:5432"
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=password
+      - POSTGRES_DB=behaviorguard
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./shared/database/init.sql:/docker-entrypoint-initdb.d/init.sql
+    networks:
+      - bg-network
+
+  # Monitoring and Observability
+  prometheus:
+    image: prom/prometheus:latest
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./shared/monitoring/prometheus.yml:/etc/prometheus/prometheus.yml
+      - prometheus_data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.console.libraries=/etc/prometheus/console_libraries'
+      - '--web.console.templates=/etc/prometheus/consoles'
+    networks:
+      - bg-network
+
+  grafana:
+    image: grafana/grafana:latest
+    ports:
+      - "3010:3000"
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./shared/monitoring/grafana/dashboards:/etc/grafana/provisioning/dashboards
+      - ./shared/monitoring/grafana/datasources:/etc/grafana/provisioning/datasources
+    depends_on:
+      - prometheus
+    networks:
+      - bg-network
+
+volumes:
+  redis_data:
+  postgres_data:
+  prometheus_data:
+  grafana_data:
+
+networks:
+  bg-network:
+    driver: bridge

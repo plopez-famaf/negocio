@@ -1,0 +1,111 @@
+Objective: Deliver a SaaS platform that enables mid-sized manufacturers (50-500 employees, 10-200 machines) to monitor equipment in real time and detect anomalies, reducing downtime and maintenance costs. The MVP targets a single vertical (e.g., food processing) and supports up to 10 machines per client, using open or simulated IoT datasets for development.Key Features (MVP):Real-time monitoring dashboard (Vue.js) for telemetry data (e.g., vibration, temperature).
+Anomaly detection using ML (Isolation Forest) with alerts via dashboard and email.
+Basic weekly PDF reports for equipment health.
+
+Tech Stack:Backend: Python 3.10, FastAPI, InfluxDB (time-series database), Scikit-learn (ML).
+Frontend: Vue.js 3, Chart.js (visualization).
+Deployment: Docker, Render (aligned with your preference for cost-effective hosting).
+Data: Open IoT datasets (e.g., UCI Machine Learning Repository) for MVP, transitioning to live sensor data in pilots.
+
+
+
+factorypulse-ai/
+├── backend/                    # FastAPI backend for telemetry processing and ML
+│   ├── app/                    # Core application logic
+│   │   ├── __init__.py
+│   │   ├── main.py             # FastAPI app entry point
+│   │   ├── api/                # API endpoints
+│   │   │   ├── __init__.py
+│   │   │   └── telemetry.py    # Endpoints for telemetry ingestion and analysis
+│   │   ├── models/             # ML models and data processing
+│   │   │   ├── __init__.py
+│   │   │   └── anomaly.py      # Isolation Forest for anomaly detection
+│   │   ├── schemas/            # Pydantic models for data validation
+│   │   │   ├── __init__.py
+│   │   │   └── telemetry.py    # Telemetry data schemas
+│   │   └── services/           # Business logic (e.g., InfluxDB queries, email alerts)
+│   │       ├── __init__.py
+│   │       ├── database.py     # InfluxDB client
+│   │       └── alerts.py       # Email notification logic
+│   ├── tests/                  # Unit and integration tests
+│   │   ├── __init__.py
+│   │   ├── test_telemetry.py   # Tests for telemetry endpoints
+│   │   └── test_anomaly.py     # Tests for anomaly detection
+│   ├── requirements.txt        # Python dependencies
+│   └── Dockerfile              # Docker configuration for backend
+├── frontend/                   # Vue.js frontend for dashboards
+│   ├── public/                 # Static assets
+│   │   ├── favicon.ico
+│   │   └── index.html          # Main HTML file
+│   ├── src/                    # Vue.js source code
+│   │   ├── assets/             # CSS, images
+│   │   │   └── styles.css
+│   │   ├── components/         # Reusable Vue components
+│   │   │   ├── Dashboard.vue   # Main telemetry dashboard
+│   │   │   └── Chart.vue       # Chart.js telemetry visualization
+│   │   ├── views/              # Page-level components
+│   │   │   └── Home.vue        # Main application view
+│   │   ├── App.vue             # Root Vue component
+│   │   ├── main.js             # Vue app entry point
+│   │   └── router.js           # Vue Router configuration
+│   ├── tests/                  # Frontend tests
+│   │   └── test_dashboard.js   # Unit tests for dashboard
+│   ├── package.json            # Node.js dependencies
+│   └── Dockerfile              # Docker configuration for frontend
+├── infrastructure/             # Deployment and configuration
+│   ├── docker-compose.yml      # Local development and testing
+│   └── render.yaml             # Render deployment configuration
+├── scripts/                    # Utility scripts
+│   └── setup_influxdb.py       # Initialize InfluxDB with sample data
+├── .gitignore                  # Git ignore file
+├── README.md                   # Project documentation
+└── LICENSE                     # MIT license for open-source components
+
+Directory Breakdownapp/main.py: Initializes FastAPI app, mounts API routes, and configures middleware (e.g., CORS for frontend).
+app/api/telemetry.py: Defines endpoints:POST /telemetry/ingest: Accepts JSON or MQTT telemetry data (e.g., {equipment_id, timestamp, vibration, temperature}).
+GET /telemetry/{equipment_id}: Retrieves time-series data for dashboard.
+POST /telemetry/analyze/{equipment_id}: Runs anomaly detection and returns results.
+
+app/models/anomaly.py: Implements Isolation Forest for anomaly detection, with preprocessing (e.g., StandardScaler).
+app/schemas/telemetry.py: Pydantic models for data validation (e.g., TelemetryInput: equipment_id, vibration, temperature).
+app/services/database.py: Manages InfluxDB connections, writing telemetry, and querying time-series data.
+app/services/alerts.py: Sends email alerts for anomalies using SendGrid or SMTP.
+tests/: Unit tests with pytest for endpoints and ML models (e.g., test_anomaly.py checks Isolation Forest accuracy).
+
+Technical DetailsFramework: FastAPI for asynchronous API handling, leveraging your interest in high-performance backends.
+Database: InfluxDB for time-series storage, optimized for high-frequency telemetry (e.g., 1 Hz vibration data). PostgreSQL optional for equipment metadata (e.g., machine IDs, types).
+ML Model: Isolation Forest (Scikit-learn) for unsupervised anomaly detection, suitable for MVP due to low compute requirements and no need for labeled data.
+Security:API key authentication for telemetry ingestion (JWT optional in post-MVP).
+HTTPS enforced via Render.
+Input validation with Pydantic to prevent injection attacks.
+
+Performance:Handle 1,000 sensor readings/second (10 machines, 100 Hz each).
+InfluxDB optimized for time-series queries (<100ms latency).
+FastAPI supports 100+ requests/second on Render’s free tier.
+
+Frontend SpecificationThe frontend provides a user-friendly dashboard for operators to monitor equipment and receive anomaly alerts, built with Vue.js and Chart.js for real-time visualization. It’s designed for non-technical users, aligning with mid-sized manufacturers’ needs.Directory Breakdownpublic/: Static assets (e.g., favicon, index.html).
+src/assets/: CSS styles and images for consistent branding.
+src/components/:Dashboard.vue: Displays real-time telemetry charts and anomaly alerts.
+Chart.vue: Reusable component for Chart.js line charts (vibration, temperature).
+
+src/views/Home.vue: Main page combining dashboard and navigation.
+src/main.js: Initializes Vue app and mounts router.
+src/router.js: Defines routes (e.g., /dashboard for main view).
+tests/: Unit tests with Jest for components (e.g., test_dashboard.js).
+
+Technical DetailsFramework: Vue.js 3 for reactive, component-based UI, aligning with your prior use in CyberGuard AI.
+Visualization: Chart.js for real-time line charts, updating every 1-5 seconds via WebSocket or polling.
+API Integration: Axios for calling FastAPI endpoints (e.g., /telemetry/{equipment_id}).
+Dependencies (package.json)
+
+UI Design:Simple, responsive dashboard with equipment list, real-time charts, and anomaly alerts (red banners for outliers).
+Mobile-friendly for operators on the factory floor.
+Outsource UI design ($5,000-$10,000) for polish, or use Vuetify for pre-built components.
+
+Performance:Support 10 concurrent users per client (typical for mid-sized plants).
+Optimize chart updates for <100ms latency using FastAPI’s async endpoints.
+
+Security:Secure API calls with API keys (JWT in post-MVP).
+HTTPS enforced via Render.
+
+
