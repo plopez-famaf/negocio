@@ -4,8 +4,8 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Repository Status
 
-**Current Status**: ✅ **Identity-Focused Platform Complete**  
-This repository contains a fully functional identity verification and biometric authentication SaaS platform. The architecture focuses on advanced identity AI services with multi-modal biometric verification, liveness detection, and comprehensive identity management capabilities.
+**Current Status**: ✅ **Console-First Threat Detection Platform Complete**  
+This repository contains a professional console-based cybersecurity platform with real-time threat detection, behavioral analysis, and WebSocket streaming. The architecture focuses on a Claude Code-inspired CLI interface targeting security analysts and SOC teams, with bg-threat-ai service providing enterprise-grade threat intelligence and real-time monitoring capabilities.
 
 ## Current Implementation
 
@@ -26,14 +26,23 @@ This repository contains a fully functional identity verification and biometric 
 - **Monitoring**: Structured logging, performance tracking, health checks ✅
 - **Testing**: Vitest unit tests, Playwright E2E, comprehensive test procedures ✅
 
-**Identity AI Services (bg-identity-ai)**
-- **Biometric Verification**: Face recognition, fingerprint matching ✅
-- **Liveness Detection**: Advanced anti-spoofing mechanisms ✅
-- **Multi-Modal Authentication**: Face + Fingerprint + Voice ✅
-- **Template Management**: Secure biometric template storage ✅
-- **Risk Assessment**: Real-time risk scoring algorithms ✅
-- **History Tracking**: Comprehensive verification audit trails ✅
-- **Redis Integration**: High-performance data caching ✅
+**Threat Detection Services (bg-threat-ai)**
+- **Real-time Threat Detection**: Advanced threat intelligence and analysis ✅
+- **Behavioral Analysis**: User and system behavior pattern recognition ✅
+- **Network Monitoring**: Real-time network intrusion detection ✅
+- **WebSocket Streaming**: Live threat event feeds for CLI integration ✅
+- **Threat Intelligence**: IoC lookup and threat correlation ✅
+- **Event Correlation**: Advanced correlation IDs and structured logging ✅
+- **Console Integration**: Professional CLI interface with interactive dashboard ✅
+
+**ThreatGuard CLI (threatguard-cli)**
+- **Console-First Design**: Terminal interface inspired by Claude Code ✅
+- **Real-time Streaming**: WebSocket integration for live threat feeds ✅
+- **Interactive Dashboard**: Terminal-based security operations center ✅
+- **Command Suite**: Comprehensive threat analysis and monitoring commands ✅
+- **Authentication**: JWT-based secure CLI-to-service communication ✅
+- **Multi-format Output**: Table, JSON, and chart-based data visualization ✅
+- **Professional UX**: Security analyst and SOC team optimized interface ✅
 
 ### Tech Stack (Phase 3B - External Services)
 - **Distributed Caching**: Redis/Upstash
@@ -53,10 +62,14 @@ This repository contains a fully functional identity verification and biometric 
 ./start-identity-services.sh  # Start all identity services with Docker Compose
 ./stop-identity-services.sh   # Stop all identity services gracefully
 
-# Individual Service Development
-cd bg-web && npm run dev      # Web application development server (port 3000)
-cd bg-identity-ai && npm run dev # Identity AI service development server (port 3001)
-cd bg-ai-dashboard && npm run dev # AI dashboard development server (port 3002)
+# Console-First Threat Platform Development
+cd threatguard-cli && npm run dev        # ThreatGuard CLI development mode
+cd bg-identity-ai && npm run dev         # bg-threat-ai service (port 3001)
+cd bg-web && npm run dev                  # Minimal web interface (port 3000)
+
+# CLI Testing & Integration
+node threatguard-cli/test-cli.js         # Test CLI interface
+node threatguard-cli/test-websocket-auth.js # Test WebSocket integration
 
 # Building (✅ Working)
 npm run build                 # Create production build
@@ -78,10 +91,14 @@ docker-compose -f docker-compose.identity.yml ps       # Check service status
 docker-compose -f docker-compose.identity.yml down     # Stop all services
 
 # Service Health Checks (✅ Available)
-curl http://localhost/health                    # NGINX proxy health
-curl http://localhost:3001/health              # Identity AI service health
-curl http://localhost:3000/api/health          # Web application health
-curl http://localhost:3010                     # Grafana monitoring dashboard
+curl http://localhost:3001/health              # bg-threat-ai service health
+curl http://localhost:3000/api/health          # Web application health (minimal interface)
+curl http://localhost/health                    # NGINX proxy health (if using Docker)
+
+# Console Platform Testing (✅ Available)
+threatguard auth status                         # Check CLI authentication status
+threatguard threat watch                        # Start real-time threat monitoring
+threatguard interactive                         # Launch interactive terminal dashboard
 ```
 
 ### Key Architectural Patterns
@@ -663,8 +680,113 @@ The platform follows a **progressive enhancement** approach with AI transformati
 
 Each phase builds upon previous work, with Phase 3 creating an **acceleration multiplier** that makes all subsequent development faster, more reliable, and higher quality. The AI transformation leverages this foundation to create specialized, focused services for identity verification and threat detection.
 
-## 🚨 **CURRENT STATUS: AI TRANSFORMATION PLANNING PHASE**
+## 🚨 **CURRENT STATUS: CONSOLE-FIRST THREAT DETECTION PLATFORM**
 
-**Planning Complete**: ✅ Architecture design, service division, implementation strategy
-**Next Step**: 🚀 Begin Phase 1 - Service Architecture Setup (2-3 weeks)
-**Approach**: Multi-repository microservices with bg-web as central API gateway
+### **Architecture Transformation Complete**: ✅ **Console-First Security Platform**
+- **threatguard-cli**: Professional terminal interface with real-time capabilities ✅
+- **bg-threat-ai**: Enhanced threat detection service (transformed from bg-identity-ai) ✅  
+- **WebSocket Streaming**: Real-time event feeds for CLI integration ✅
+- **Interactive Dashboard**: Terminal-based security operations center ✅
+
+### **Current Phase**: 🛠️ **Service Communication & Integration Testing (1-2 weeks)**
+**Completed Achievements:**
+- **✅ Service Integration**: bg-threat-ai service transformation verified and operational
+- **✅ WebSocket Testing**: Real-time streaming with JWT authentication working
+- **✅ Authentication Flow**: CLI-to-service secure communication established
+- **✅ Basic Performance**: Health endpoints responding, WebSocket events streaming
+
+**Current Priorities:**
+- **API Endpoint Testing**: Comprehensive REST API validation and performance testing
+- **WebSocket Load Testing**: Multi-client streaming and connection resilience  
+- **CLI Integration Testing**: End-to-end command workflows and error handling
+- **Performance Validation**: Ensure <100ms API response and <50ms WebSocket latency
+
+### **Strategic Position**: 🎯 **First-to-Market Console-First Cybersecurity Platform**
+- Professional terminal interface targeting security analysts and SOC teams
+- Real-time threat detection with behavioral analysis capabilities
+- Enterprise-grade performance with developer-friendly CLI experience
+- Market differentiation through console-first approach vs traditional web dashboards
+
+## **Next Steps Roadmap**
+
+### **🚨 Immediate Priority (Next 1-2 weeks)**
+1. **Service Communication Testing**
+   - Comprehensive API endpoint testing with authentication
+   - WebSocket load testing with 100+ concurrent connections
+   - CLI command integration testing and error handling
+   - Performance benchmarking (<100ms API, <50ms WebSocket)
+
+2. **Integration Testing Suite**
+   - Automated test suite creation for service communication
+   - End-to-end CLI workflow testing  
+   - Error recovery and resilience testing
+   - Documentation of testing procedures and benchmarks
+
+3. **Database Schema Updates**
+   - Remove biometric tables from database
+   - Add threat detection tables (events, patterns, intelligence)
+   - Update bg-web queries for new schema
+
+### **📋 Short-term Goals (Next 2-4 weeks)**
+4. **Web Interface Simplification**
+   - Transform bg-web to focus on landing page and admin
+   - Remove complex user dashboard and biometric UI
+   - Add CLI download links and documentation
+
+5. **Open Source Library Integration**
+   - **PyOD**: Advanced anomaly detection algorithms
+   - **Suricata**: Network intrusion detection
+   - **River**: Online learning for behavioral models
+   - **ELK Stack**: Enhanced logging backend
+
+### **🎯 Medium-term Objectives (Next 1-2 months)**
+6. **Advanced CLI Features**
+   - Export capabilities (PDF, CSV, JSON)
+   - Scripting support and automation
+   - Plugin system for custom commands
+   - Configuration profiles
+
+7. **Performance Optimization** 
+   - Kafka/Flink stream processing
+   - TensorFlow/PyTorch ML integration
+   - Redis optimization
+   - Enterprise-grade API handling
+
+8. **Security Hardening**
+   - Secure CLI token management
+   - Enhanced API authentication
+   - End-to-end data encryption
+   - Comprehensive audit logging
+
+### **🚀 Strategic Phase (Next 3-6 months)**
+9. **Market Launch Preparation**
+   - Comprehensive CLI documentation
+   - Interactive tutorial system
+   - Demo environment setup
+   - Support and troubleshooting
+
+10. **Enterprise Features**
+    - Multi-tenant CLI support
+    - Role-based command access
+    - SSO integration
+    - Compliance reporting
+
+### **Technical Implementation Priorities**
+
+**Week 1-2: Core Functionality**
+- Service integration testing
+- CLI authentication flow
+- WebSocket streaming verification
+- Basic error handling
+
+**Week 3-4: Polish & Testing**
+- User experience refinement
+- Command performance optimization
+- WebSocket stability testing
+- Documentation completion
+
+**Month 2: Advanced Features**
+- ML library integration
+- Advanced threat algorithms
+- Export and reporting
+- Automation support
