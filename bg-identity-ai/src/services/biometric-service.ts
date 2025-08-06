@@ -1,10 +1,16 @@
 import { logger } from '@/lib/logger';
 import { BiometricVerificationResult, BiometricEnrollmentResult, LivenessDetectionResult } from '@/types/biometric';
+import { PQCManager } from '@/lib/quantum-crypto/pqc-manager';
+import { IAMConnector } from '@/lib/iam-integration/iam-connector';
+import { ComplianceManager } from '@/lib/compliance/compliance-manager';
 import Redis from 'ioredis';
 import crypto from 'crypto';
 
 export class BiometricService {
   private redis: Redis;
+  private pqcManager: PQCManager;
+  private iamConnector: IAMConnector;
+  private complianceManager: ComplianceManager;
   
   constructor() {
     this.redis = new Redis({
@@ -17,6 +23,29 @@ export class BiometricService {
     
     this.redis.on('error', (error) => {
       logger.error('Redis connection error:', error);
+    });
+
+    // Initialize quantum-safe cryptography
+    this.pqcManager = new PQCManager();
+    
+    // Initialize IAM integration
+    this.iamConnector = new IAMConnector();
+    
+    // Initialize compliance management
+    this.complianceManager = new ComplianceManager({
+      regulations: ['GDPR', 'HIPAA', 'NIST-PQC', 'SOC2'],
+      industry: process.env.INDUSTRY_TYPE as any || 'general',
+      dataRetentionPeriod: parseInt(process.env.DATA_RETENTION_DAYS || '365'),
+      auditLogRetention: parseInt(process.env.AUDIT_LOG_RETENTION_DAYS || '2555'), // 7 years
+      encryptionStandards: ['AES-256', 'quantum-safe'],
+      dataProcessingBasis: 'consent',
+      privacyNoticeVersion: '1.0'
+    });
+
+    logger.info('BiometricService initialized with quantum-safe and compliance features', {
+      quantumSafe: true,
+      iamIntegration: true,
+      complianceFrameworks: ['GDPR', 'HIPAA', 'NIST-PQC', 'SOC2']
     });
   }
   async verifyFace(userId: string, imageBuffer: Buffer): Promise<BiometricVerificationResult> {
@@ -256,10 +285,57 @@ export class BiometricService {
 
   async storeBiometricTemplate(userId: string, type: 'face' | 'fingerprint', template: string): Promise<void> {
     try {
+      // Record compliance event
+      await this.complianceManager.recordAuditEvent({
+        userId,
+        action: 'biometric_template_storage',
+        resource: 'biometric_template',
+        result: 'success',
+        personalData: true,
+        quantumSafe: true,
+        dataCategory: 'biometric',
+        metadata: { templateType: type }
+      });
+
+      // Encrypt template with quantum-safe encryption
+      const templateBuffer = Buffer.from(template, 'utf8');
+      const encryptedTemplate = await this.pqcManager.encryptBiometricTemplate(templateBuffer);
+      
       const templateKey = `biometric:${type}:${userId}`;
-      await this.redis.setex(templateKey, 86400 * 30, template); // 30 days TTL
-      logger.info('Biometric template stored', { userId, type });
+      await this.redis.setex(templateKey, 86400 * 30, JSON.stringify(encryptedTemplate)); // 30 days TTL
+      
+      // Record data processing for GDPR compliance
+      await this.complianceManager.recordDataProcessing({
+        userId,
+        dataType: 'biometric',
+        purpose: 'identity_verification',
+        legalBasis: 'consent',
+        dataCategories: ['biometric_template'],
+        processingLocation: 'EU', // or actual location
+        retentionPeriod: 30, // days
+        thirdPartySharing: false,
+        quantumEncrypted: true
+      });
+
+      logger.info('Biometric template stored with quantum-safe encryption', { 
+        userId, 
+        type,
+        compliance: ['GDPR', 'NIST-PQC'],
+        quantumSafe: true 
+      });
     } catch (error) {
+      // Record failed attempt for audit
+      await this.complianceManager.recordAuditEvent({
+        userId,
+        action: 'biometric_template_storage',
+        resource: 'biometric_template',
+        result: 'failure',
+        personalData: true,
+        quantumSafe: false,
+        dataCategory: 'biometric',
+        metadata: { error: error instanceof Error ? error.message : 'Unknown error' }
+      });
+
       logger.error('Failed to store biometric template', { userId, type, error });
       throw new Error('Template storage failed');
     }

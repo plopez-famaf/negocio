@@ -10,7 +10,7 @@ interface AuthenticatedRequest extends Request {
   };
 }
 
-export const authMiddleware = (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+export const authMiddleware = (req: AuthenticatedRequest, res: Response, next: NextFunction): void => {
   const token = req.header('Authorization')?.replace('Bearer ', '');
   
   if (!token) {
@@ -42,6 +42,6 @@ export const authMiddleware = (req: AuthenticatedRequest, res: Response, next: N
       error: error instanceof Error ? error.message : 'Unknown error',
       ip: req.ip
     });
-    res.status(401).json({ error: 'Invalid token.' });
+    return res.status(401).json({ error: 'Invalid token.' });
   }
 };

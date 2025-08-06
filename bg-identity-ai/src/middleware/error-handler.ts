@@ -6,7 +6,7 @@ export const errorHandler = (
   req: Request,
   res: Response,
   next: NextFunction
-) => {
+): void => {
   logger.error('Unhandled error', {
     error: error.message,
     stack: error.stack,

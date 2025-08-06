@@ -1,59 +1,45 @@
 import { Router } from 'express';
-import multer from 'multer';
 import { logger } from '@/lib/logger';
-import { BiometricService } from '@/services/biometric-service';
+import { ThreatDetectionService } from '@/services/threat-detection-service';
 
 const router = Router();
-const upload = multer({
-  storage: multer.memoryStorage(),
-  limits: {
-    fileSize: 10 * 1024 * 1024 // 10MB limit
-  },
-  fileFilter: (req, file, cb) => {
-    const allowedTypes = ['image/jpeg', 'image/png', 'image/jpg'];
-    if (allowedTypes.includes(file.mimetype)) {
-      cb(null, true);
-    } else {
-      cb(new Error('Invalid file type. Only JPEG and PNG are allowed.'));
-    }
-  }
-});
+const threatService = new ThreatDetectionService();
 
-const biometricService = new BiometricService();
-
-// Face verification endpoint
-router.post('/verify-face', upload.single('image'), async (req, res) => {
+// Real-time threat detection endpoint
+router.post('/detect-realtime', async (req, res) => {
   try {
-    if (!req.file) {
-      return res.status(400).json({ error: 'No image file provided' });
-    }
-
+    const { events, source, timestamp } = req.body;
     const userId = req.user?.id;
+    
     if (!userId) {
       return res.status(401).json({ error: 'User not authenticated' });
     }
 
-    logger.info('Face verification requested', {
+    if (!events || !Array.isArray(events)) {
+      return res.status(400).json({ error: 'Events array is required' });
+    }
+
+    logger.info('Real-time threat detection requested', {
       userId,
-      fileSize: req.file.size,
-      mimeType: req.file.mimetype
+      eventCount: events.length,
+      source
     });
 
-    const result = await biometricService.verifyFace(userId, req.file.buffer);
+    const result = await threatService.detectThreatsRealtime(events, source, userId);
     
-    logger.info('Face verification completed', {
+    logger.info('Real-time threat detection completed', {
       userId,
-      success: result.verified,
-      confidence: result.confidence
+      threatsFound: result.threatsDetected,
+      riskScore: result.overallRiskScore
     });
 
     res.json(result);
   } catch (error) {
-    logger.error('Face verification failed', {
+    logger.error('Real-time threat detection failed', {
       error: error instanceof Error ? error.message : 'Unknown error',
       userId: req.user?.id
     });
-    res.status(500).json({ error: 'Face verification failed' });
+    res.status(500).json({ error: 'Real-time threat detection failed' });
   }
 });
 

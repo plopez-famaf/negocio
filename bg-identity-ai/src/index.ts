@@ -1,4 +1,5 @@
 import express from 'express';
+import { createServer } from 'http';
 import cors from 'cors';
 import helmet from 'helmet';
 import compression from 'compression';
@@ -6,13 +7,14 @@ import dotenv from 'dotenv';
 import { logger } from '@/lib/logger';
 import { errorHandler } from '@/middleware/error-handler';
 import { authMiddleware } from '@/middleware/auth';
-import { biometricRoutes } from '@/routes/biometric';
-import { documentRoutes } from '@/routes/document';
+import { threatRoutes } from '@/routes/threat';
 import { healthRoutes } from '@/routes/health';
+import { WebSocketStreamService } from '@/services/websocket-stream-service';
 
 dotenv.config();
 
 const app = express();
+const server = createServer(app);
 const PORT = process.env.PORT || 3001;
 
 // Security and performance middleware
@@ -26,7 +28,7 @@ app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
 // Logging middleware
-app.use((req, res, next) => {
+app.use((req, _res, next) => {
   logger.info('Request received', {
     method: req.method,
     url: req.url,
@@ -38,19 +40,55 @@ app.use((req, res, next) => {
 
 // Routes
 app.use('/health', healthRoutes);
-app.use('/api/biometric', authMiddleware, biometricRoutes);
-app.use('/api/document', authMiddleware, documentRoutes);
+app.use('/api/threat', authMiddleware, threatRoutes);
 
 // Error handling
 app.use(errorHandler);
 
 // 404 handler
-app.use('*', (req, res) => {
+app.use('*', (_req, res) => {
   res.status(404).json({ error: 'Route not found' });
 });
 
-app.listen(PORT, () => {
-  logger.info(`BG Identity AI Service listening on port ${PORT}`);
+// Initialize WebSocket streaming service
+const streamService = new WebSocketStreamService(server);
+
+// Start server
+server.listen(PORT, () => {
+  logger.info(`BG Threat AI Service listening on port ${PORT}`, {
+    service: 'bg-threat-ai',
+    version: '2.0.0',
+    features: [
+      'real-time-detection', 
+      'behavioral-analysis', 
+      'network-monitoring', 
+      'threat-intelligence',
+      'websocket-streaming'
+    ],
+    websocket: {
+      enabled: true,
+      transports: ['websocket', 'polling']
+    }
+  });
+});
+
+// Graceful shutdown
+process.on('SIGTERM', () => {
+  logger.info('SIGTERM received, shutting down gracefully');
+  streamService.cleanup();
+  server.close(() => {
+    logger.info('Process terminated');
+    process.exit(0);
+  });
+});
+
+process.on('SIGINT', () => {
+  logger.info('SIGINT received, shutting down gracefully');
+  streamService.cleanup();
+  server.close(() => {
+    logger.info('Process terminated');
+    process.exit(0);
+  });
 });
 
 export default app;
