@@ -34,7 +34,7 @@ export interface AuditEvent {
     userId?: string;
     action: string;
     resource: string;
-    result: 'success' | 'failure' | 'denied';
+    result: 'success' | 'failure' | 'denied' | 'initiated' | 'completed' | 'error';
     ipAddress?: string;
     userAgent?: string;
     compliance: string[];

@@ -281,7 +281,7 @@ export class IAMConnector {
 
       // Test connection
       await new Promise<void>((resolve, reject) => {
-        client.bind(provider.config.bindDN, provider.config.bindPassword, (err) => {
+        client.bind(provider.config.bindDN, provider.config.bindPassword, (err: any) => {
           if (err) reject(err);
           else resolve();
         });

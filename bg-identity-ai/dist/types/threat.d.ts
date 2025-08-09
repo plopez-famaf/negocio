@@ -4,10 +4,10 @@ export interface ThreatEvent {
     type: 'malware' | 'intrusion' | 'anomaly' | 'behavioral' | 'network';
     severity: 'low' | 'medium' | 'high' | 'critical';
     source: string;
-    target: string;
+    target?: string;
     description: string;
     riskScore: number;
-    status: 'active' | 'resolved' | 'false_positive';
+    status: 'active' | 'resolved' | 'false_positive' | 'investigating';
     metadata: {
         correlationId: string;
         source: string;
@@ -41,5 +41,28 @@ export interface NetworkMonitoringOptions {
     duration?: number;
     filters?: string[];
     realtime?: boolean;
+}
+export interface BehaviorAnalysisResult {
+    analysisId: string;
+    target: string;
+    timeRange: {
+        start: string;
+        end: string;
+    };
+    overallRiskScore: number;
+    patterns: BehaviorPattern[];
+    anomalies: number;
+    recommendations: string[];
+}
+export interface BehaviorPattern {
+    id: string;
+    timestamp: string;
+    target: string;
+    pattern: string;
+    confidence: number;
+    anomalyScore: number;
+    baseline: Record<string, number>;
+    current: Record<string, number>;
+    deviations: string[];
 }
 //# sourceMappingURL=threat.d.ts.map

@@ -1,0 +1,58 @@
+version: '3.8'
+
+services:
+  redis:
+    image: redis:7-alpine
+    container_name: threatguard-redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    command: >
+      redis-server
+      --maxmemory 512mb
+      --maxmemory-policy allkeys-lru
+      --appendonly yes
+      --appendfsync everysec
+      --save 900 1
+      --save 300 10
+      --save 60 10000
+    volumes:
+      - redis_data:/data
+      - redis_config:/usr/local/etc/redis
+    environment:
+      - REDIS_REPLICATION_MODE=master
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    networks:
+      - threatguard-network
+
+  redis-commander:
+    image: rediscommander/redis-commander:latest
+    container_name: threatguard-redis-commander
+    restart: unless-stopped
+    ports:
+      - "8081:8081"
+    environment:
+      - REDIS_HOSTS=local:redis:6379
+      - HTTP_USER=admin
+      - HTTP_PASSWORD=threatguard2024
+    depends_on:
+      redis:
+        condition: service_healthy
+    networks:
+      - threatguard-network
+
+volumes:
+  redis_data:
+    driver: local
+  redis_config:
+    driver: local
+
+networks:
+  threatguard-network:
+    driver: bridge
+    name: threatguard-network

@@ -1,26 +1,14 @@
 "use strict";
-var __importDefault = (this && this.__importDefault) || function (mod) {
-    return (mod && mod.__esModule) ? mod : { "default": mod };
-};
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.ThreatDetectionService = void 0;
 const logger_1 = require("@/lib/logger");
 const compliance_manager_1 = require("@/lib/compliance/compliance-manager");
-const ioredis_1 = __importDefault(require("ioredis"));
+const bg_web_client_1 = require("@/lib/bg-web-client");
+const redis_client_1 = require("@/lib/redis-client");
+const threat_cache_1 = require("@/lib/cache/threat-cache");
 class ThreatDetectionService {
-    redis;
     complianceManager;
     constructor() {
-        this.redis = new ioredis_1.default({
-            host: process.env.REDIS_HOST || 'localhost',
-            port: parseInt(process.env.REDIS_PORT || '6379'),
-            db: parseInt(process.env.REDIS_DB || '0'),
-            retryDelayOnFailover: 100,
-            maxRetriesPerRequest: 3
-        });
-        this.redis.on('error', (error) => {
-            logger_1.logger.error('Redis connection error:', error);
-        });
         // Initialize compliance management
         this.complianceManager = new compliance_manager_1.ComplianceManager({
             regulations: ['GDPR', 'SOX', 'PCI-DSS', 'SOC2'],
@@ -82,8 +70,55 @@ class ThreatDetectionService {
                 threats,
                 summary
             };
-            // Store results in Redis for caching
-            await this.redis.setex(`threat_detection:${detectionId}`, 3600, JSON.stringify(result));
+            // Cache threat detection results for future reference
+            if (redis_client_1.redisClient.isReady()) {
+                await redis_client_1.redisClient.set(`threat_detection:${detectionId}`, JSON.stringify(result), 3600);
+                // Cache individual threat events using our threat cache
+                for (const threat of threats) {
+                    await threat_cache_1.threatCache.cacheThreatEvent(threat, { ttl: 300 }); // 5 minutes TTL
+                }
+            }
+            // Store individual threat events in bg-web database
+            for (const threat of threats) {
+                try {
+                    const storeResult = await bg_web_client_1.bgWebClient.createThreatEvent(threat.id, {
+                        type: threat.type,
+                        severity: threat.severity,
+                        source: threat.source,
+                        target: threat.target,
+                        description: threat.description,
+                        riskScore: threat.riskScore,
+                        status: threat.status,
+                        metadata: threat.metadata
+                    }, userId);
+                    if (!storeResult.success) {
+                        logger_1.logger.warn('Failed to store threat event in bg-web database', {
+                            component: 'threat-detection-service',
+                            action: 'store_threat_event',
+                            eventId: threat.id,
+                            error: storeResult.error,
+                            userId
+                        });
+                    }
+                    else {
+                        logger_1.logger.debug('Threat event stored in bg-web database', {
+                            component: 'threat-detection-service',
+                            action: 'store_threat_event',
+                            eventId: threat.id,
+                            dbId: storeResult.id,
+                            userId
+                        });
+                    }
+                }
+                catch (error) {
+                    logger_1.logger.error('Error storing threat event in bg-web database', {
+                        component: 'threat-detection-service',
+                        action: 'store_threat_event',
+                        eventId: threat.id,
+                        userId
+                    }, error);
+                }
+            }
             // Record completion
             await this.complianceManager.recordAuditEvent({
                 userId,
@@ -160,8 +195,10 @@ class ThreatDetectionService {
                 anomalies,
                 recommendations
             };
-            // Cache results
-            await this.redis.setex(`behavior_analysis:${analysisId}`, 3600, JSON.stringify(result));
+            // Cache behavioral analysis results using our threat cache
+            if (redis_client_1.redisClient.isReady()) {
+                await threat_cache_1.threatCache.cacheBehaviorBaseline(request.target, request.analysisType, result, { ttl: 3600 });
+            }
             logger_1.logger.info('Behavioral analysis completed', {
                 analysisId,
                 target: request.target,
@@ -206,8 +243,24 @@ class ThreatDetectionService {
                 topSources,
                 topTargets
             };
-            // Cache results
-            await this.redis.setex(`network_monitoring:${monitoringId}`, 1800, JSON.stringify(result));
+            // Cache network monitoring results
+            if (redis_client_1.redisClient.isReady()) {
+                await redis_client_1.redisClient.set(`network_monitoring:${monitoringId}`, JSON.stringify(result), 1800);
+                // Cache individual network connections
+                for (const event of events) {
+                    const connectionId = `${event.sourceIp}_${event.destIp}_${event.destPort}`;
+                    await threat_cache_1.threatCache.cacheNetworkConnection(connectionId, {
+                        sourceIp: event.sourceIp,
+                        destinationIp: event.destIp || '',
+                        port: event.destPort || 0,
+                        protocol: event.protocol,
+                        timestamp: event.timestamp,
+                        bytes: event.bytes,
+                        packets: event.packets,
+                        flags: event.flags
+                    }, { ttl: 1800 });
+                }
+            }
             logger_1.logger.info('Network monitoring completed', {
                 monitoringId,
                 eventsFound: events.length,
@@ -249,8 +302,22 @@ class ThreatDetectionService {
                 timestamp: new Date().toISOString(),
                 results
             };
-            // Cache results
-            await this.redis.setex(`threat_intel:${queryId}`, 1800, JSON.stringify(response));
+            // Cache threat intelligence results
+            if (redis_client_1.redisClient.isReady()) {
+                await redis_client_1.redisClient.set(`threat_intel:${queryId}`, JSON.stringify(response), 1800);
+                // Cache individual threat intelligence lookups
+                for (const result of results) {
+                    await threat_cache_1.threatCache.cacheThreatIntelligence(result.indicator, {
+                        ioc: result.indicator,
+                        type: result.type,
+                        reputation: result.confidence,
+                        sources: result.sources,
+                        lastSeen: new Date().toISOString(),
+                        categories: [result.reputation],
+                        confidence: result.confidence
+                    }, { ttl: 14400 }); // 4 hours TTL
+                }
+            }
             logger_1.logger.info('Threat intelligence query completed', {
                 queryId,
                 indicatorsProcessed: indicators.length,
@@ -282,7 +349,10 @@ class ThreatDetectionService {
                 correlations,
                 highRiskCorrelations: correlations.filter((c) => c.riskScore >= 8).length
             };
-            await this.redis.setex(`threat_correlation:${correlationId}`, 3600, JSON.stringify(result));
+            // Cache threat correlation results
+            if (redis_client_1.redisClient.isReady()) {
+                await threat_cache_1.threatCache.cacheCorrelationPattern(correlationId, result, { ttl: 3600 });
+            }
             logger_1.logger.info('Threat correlation completed', {
                 correlationId,
                 correlationsFound: correlations.length
@@ -583,7 +653,7 @@ class ThreatDetectionService {
         return new Promise(resolve => setTimeout(resolve, delay));
     }
     async cleanup() {
-        await this.redis.quit();
+        await redis_client_1.redisClient.disconnect();
         logger_1.logger.info('ThreatDetectionService Redis connection closed');
     }
 }

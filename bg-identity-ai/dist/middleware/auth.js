@@ -13,13 +13,15 @@ const authMiddleware = (req, res, next) => {
             ip: req.ip,
             userAgent: req.get('User-Agent')
         });
-        return res.status(401).json({ error: 'Access denied. No token provided.' });
+        res.status(401).json({ error: 'Access denied. No token provided.' });
+        return;
     }
     try {
         const jwtSecret = process.env.JWT_SECRET;
         if (!jwtSecret) {
             logger_1.logger.error('JWT_SECRET not configured');
-            return res.status(500).json({ error: 'Server configuration error' });
+            res.status(500).json({ error: 'Server configuration error' });
+            return;
         }
         const decoded = jsonwebtoken_1.default.verify(token, jwtSecret);
         req.user = decoded;
@@ -34,7 +36,8 @@ const authMiddleware = (req, res, next) => {
             error: error instanceof Error ? error.message : 'Unknown error',
             ip: req.ip
         });
-        return res.status(401).json({ error: 'Invalid token.' });
+        res.status(401).json({ error: 'Invalid token.' });
+        return;
     }
 };
 exports.authMiddleware = authMiddleware;

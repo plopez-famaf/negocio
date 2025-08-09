@@ -92,7 +92,6 @@ export interface ThreatIntelligenceResult {
     }>;
 }
 export declare class ThreatDetectionService {
-    private redis;
     private complianceManager;
     constructor();
     detectThreatsRealtime(events: any[], source: string, userId: string): Promise<ThreatDetectionResult>;
