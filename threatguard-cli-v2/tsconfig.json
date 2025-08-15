@@ -1,0 +1,54 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "allowSyntheticDefaultImports": true,
+    "esModuleInterop": true,
+    "allowJs": true,
+    "strict": true,
+    "noEmit": true,
+    "isolatedModules": true,
+    "skipLibCheck": true,
+    "forceConsistentCasingInFileNames": true,
+    "resolveJsonModule": true,
+    "declaration": true,
+    "declarationMap": true,
+    "sourceMap": true,
+    "jsx": "react-jsx",
+    "baseUrl": ".",
+    "paths": {
+      "@threatguard/core": ["./packages/core/src"],
+      "@threatguard/core/*": ["./packages/core/src/*"],
+      "@threatguard/ui-components": ["./packages/ui-components/src"],
+      "@threatguard/ui-components/*": ["./packages/ui-components/src/*"],
+      "@threatguard/test-utils": ["./packages/test-utils/src"],
+      "@threatguard/test-utils/*": ["./packages/test-utils/src/*"]
+    }
+  },
+  "include": [
+    "packages/*/src/**/*",
+    "test/**/*",
+    "*.config.ts"
+  ],
+  "exclude": [
+    "node_modules",
+    "dist",
+    "coverage",
+    "packages/*/dist"
+  ],
+  "references": [
+    {
+      "path": "./packages/core"
+    },
+    {
+      "path": "./packages/ui-components"
+    },
+    {
+      "path": "./packages/cli"
+    },
+    {
+      "path": "./packages/test-utils"
+    }
+  ]
+}

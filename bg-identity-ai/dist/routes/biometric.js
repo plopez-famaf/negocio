@@ -1,42 +1,45 @@
 "use strict";
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.biometricRoutes = void 0;
 const express_1 = require("express");
+const multer_1 = __importDefault(require("multer"));
 const logger_1 = require("@/lib/logger");
-const threat_detection_service_1 = require("@/services/threat-detection-service");
+const biometric_service_1 = require("@/services/biometric-service");
 const router = (0, express_1.Router)();
 exports.biometricRoutes = router;
-const threatService = new threat_detection_service_1.ThreatDetectionService();
-// Real-time threat detection endpoint
-router.post('/detect-realtime', async (req, res) => {
+const upload = (0, multer_1.default)({ storage: multer_1.default.memoryStorage() });
+const biometricService = new biometric_service_1.BiometricService();
+// Face verification endpoint
+router.post('/verify-face', upload.single('image'), async (req, res) => {
     try {
-        const { events, source, timestamp } = req.body;
+        if (!req.file) {
+            return res.status(400).json({ error: 'No face image provided' });
+        }
         const userId = req.user?.id;
         if (!userId) {
             return res.status(401).json({ error: 'User not authenticated' });
         }
-        if (!events || !Array.isArray(events)) {
-            return res.status(400).json({ error: 'Events array is required' });
-        }
-        logger_1.logger.info('Real-time threat detection requested', {
+        logger_1.logger.info('Face verification requested', {
             userId,
-            eventCount: events.length,
-            source
+            fileSize: req.file.size
         });
-        const result = await threatService.detectThreatsRealtime(events, source, userId);
-        logger_1.logger.info('Real-time threat detection completed', {
+        const result = await biometricService.verifyFace(userId, req.file.buffer);
+        logger_1.logger.info('Face verification completed', {
             userId,
-            threatsFound: result.threatsDetected,
-            riskScore: result.overallRiskScore
+            success: result.verified,
+            confidence: result.confidence
         });
-        res.json(result);
+        return res.json(result);
     }
     catch (error) {
-        logger_1.logger.error('Real-time threat detection failed', {
+        logger_1.logger.error('Face verification failed', {
             error: error instanceof Error ? error.message : 'Unknown error',
             userId: req.user?.id
         });
-        res.status(500).json({ error: 'Real-time threat detection failed' });
+        return res.status(500).json({ error: 'Face verification failed' });
     }
 });
 // Fingerprint verification endpoint
@@ -59,14 +62,14 @@ router.post('/verify-fingerprint', upload.single('image'), async (req, res) => {
             success: result.verified,
             confidence: result.confidence
         });
-        res.json(result);
+        return res.json(result);
     }
     catch (error) {
         logger_1.logger.error('Fingerprint verification failed', {
             error: error instanceof Error ? error.message : 'Unknown error',
             userId: req.user?.id
         });
-        res.status(500).json({ error: 'Fingerprint verification failed' });
+        return res.status(500).json({ error: 'Fingerprint verification failed' });
     }
 });
 // Enroll biometric data
@@ -81,7 +84,7 @@ router.post('/enroll', upload.single('image'), async (req, res) => {
             return res.status(401).json({ error: 'User not authenticated' });
         }
         if (!['face', 'fingerprint'].includes(type)) {
-            return res.status(400).json({ error: 'Invalid biometric type' });
+            return res.status(500).json({ error: 'Invalid biometric type' });
         }
         logger_1.logger.info('Biometric enrollment requested', {
             userId,
@@ -94,14 +97,14 @@ router.post('/enroll', upload.single('image'), async (req, res) => {
             type,
             success: result.success
         });
-        res.json(result);
+        return res.json(result);
     }
     catch (error) {
         logger_1.logger.error('Biometric enrollment failed', {
             error: error instanceof Error ? error.message : 'Unknown error',
             userId: req.user?.id
         });
-        res.status(500).json({ error: 'Biometric enrollment failed' });
+        return res.status(500).json({ error: 'Biometric enrollment failed' });
     }
 });
 // Liveness detection endpoint
@@ -120,13 +123,13 @@ router.post('/liveness-detection', upload.single('image'), async (req, res) => {
             confidence: result.confidence,
             livenessScore: result.livenessScore
         });
-        res.json(result);
+        return res.json(result);
     }
     catch (error) {
         logger_1.logger.error('Liveness detection failed', {
             error: error instanceof Error ? error.message : 'Unknown error'
         });
-        res.status(500).json({ error: 'Liveness detection failed' });
+        return res.status(500).json({ error: 'Liveness detection failed' });
     }
 });
 // Multi-modal verification endpoint
@@ -142,7 +145,7 @@ router.post('/verify-multimodal', upload.fields([
             return res.status(401).json({ error: 'User not authenticated' });
         }
         if (!files?.face?.[0]) {
-            return res.status(400).json({ error: 'Face image is required for multi-modal verification' });
+            return res.status(500).json({ error: 'Face image is required for multi-modal verification' });
         }
         logger_1.logger.info('Multi-modal verification requested', {
             userId,
@@ -159,14 +162,14 @@ router.post('/verify-multimodal', upload.fields([
             overallConfidence: result.overallConfidence,
             riskScore: result.riskScore
         });
-        res.json(result);
+        return res.json(result);
     }
     catch (error) {
         logger_1.logger.error('Multi-modal verification failed', {
             error: error instanceof Error ? error.message : 'Unknown error',
             userId: req.user?.id
         });
-        res.status(500).json({ error: 'Multi-modal verification failed' });
+        return res.status(500).json({ error: 'Multi-modal verification failed' });
     }
 });
 // Get verification history
@@ -186,14 +189,14 @@ router.get('/history/:userId?', async (req, res) => {
             userId,
             historyLength: history.length
         });
-        res.json({ userId, history });
+        return res.json({ userId, history });
     }
     catch (error) {
         logger_1.logger.error('Failed to retrieve verification history', {
             error: error instanceof Error ? error.message : 'Unknown error',
             userId: req.params.userId || req.user?.id
         });
-        res.status(500).json({ error: 'Failed to retrieve history' });
+        return res.status(500).json({ error: 'Failed to retrieve history' });
     }
 });
 // Health check for biometric service
@@ -209,13 +212,13 @@ router.get('/health', async (req, res) => {
             // Test Redis connection
             redis: 'connected' // Simplified for now
         };
-        res.json(health);
+        return res.json(health);
     }
     catch (error) {
         logger_1.logger.error('Health check failed', {
             error: error instanceof Error ? error.message : 'Unknown error'
         });
-        res.status(500).json({
+        return res.status(500).json({
             status: 'unhealthy',
             error: error instanceof Error ? error.message : 'Unknown error'
         });

@@ -1,45 +1,44 @@
 import { Router } from 'express';
+import multer from 'multer';
 import { logger } from '@/lib/logger';
-import { ThreatDetectionService } from '@/services/threat-detection-service';
+import { BiometricService } from '@/services/biometric-service';
 
 const router = Router();
-const threatService = new ThreatDetectionService();
+const upload = multer({ storage: multer.memoryStorage() });
+const biometricService = new BiometricService();
 
-// Real-time threat detection endpoint
-router.post('/detect-realtime', async (req, res) => {
+// Face verification endpoint
+router.post('/verify-face', upload.single('image'), async (req, res) => {
   try {
-    const { events, source, timestamp } = req.body;
+    if (!req.file) {
+      return res.status(400).json({ error: 'No face image provided' });
+    }
+
     const userId = req.user?.id;
-    
     if (!userId) {
       return res.status(401).json({ error: 'User not authenticated' });
     }
 
-    if (!events || !Array.isArray(events)) {
-      return res.status(400).json({ error: 'Events array is required' });
-    }
-
-    logger.info('Real-time threat detection requested', {
+    logger.info('Face verification requested', {
       userId,
-      eventCount: events.length,
-      source
+      fileSize: req.file.size
     });
 
-    const result = await threatService.detectThreatsRealtime(events, source, userId);
+    const result = await biometricService.verifyFace(userId, req.file.buffer);
     
-    logger.info('Real-time threat detection completed', {
+    logger.info('Face verification completed', {
       userId,
-      threatsFound: result.threatsDetected,
-      riskScore: result.overallRiskScore
+      success: result.verified,
+      confidence: result.confidence
     });
 
-    res.json(result);
+    return res.json(result);
   } catch (error) {
-    logger.error('Real-time threat detection failed', {
+    logger.error('Face verification failed', {
       error: error instanceof Error ? error.message : 'Unknown error',
       userId: req.user?.id
     });
-    res.status(500).json({ error: 'Real-time threat detection failed' });
+    return res.status(500).json({ error: 'Face verification failed' });
   }
 });
 
@@ -68,13 +67,13 @@ router.post('/verify-fingerprint', upload.single('image'), async (req, res) => {
       confidence: result.confidence
     });
 
-    res.json(result);
+    return res.json(result);
   } catch (error) {
     logger.error('Fingerprint verification failed', {
       error: error instanceof Error ? error.message : 'Unknown error',
       userId: req.user?.id
     });
-    res.status(500).json({ error: 'Fingerprint verification failed' });
+    return res.status(500).json({ error: 'Fingerprint verification failed' });
   }
 });
 
@@ -93,7 +92,7 @@ router.post('/enroll', upload.single('image'), async (req, res) => {
     }
 
     if (!['face', 'fingerprint'].includes(type)) {
-      return res.status(400).json({ error: 'Invalid biometric type' });
+      return res.status(500).json({ error: 'Invalid biometric type' });
     }
 
     logger.info('Biometric enrollment requested', {
@@ -110,13 +109,13 @@ router.post('/enroll', upload.single('image'), async (req, res) => {
       success: result.success
     });
 
-    res.json(result);
+    return res.json(result);
   } catch (error) {
     logger.error('Biometric enrollment failed', {
       error: error instanceof Error ? error.message : 'Unknown error',
       userId: req.user?.id
     });
-    res.status(500).json({ error: 'Biometric enrollment failed' });
+    return res.status(500).json({ error: 'Biometric enrollment failed' });
   }
 });
 
@@ -140,12 +139,12 @@ router.post('/liveness-detection', upload.single('image'), async (req, res) => {
       livenessScore: result.livenessScore
     });
 
-    res.json(result);
+    return res.json(result);
   } catch (error) {
     logger.error('Liveness detection failed', {
       error: error instanceof Error ? error.message : 'Unknown error'
     });
-    res.status(500).json({ error: 'Liveness detection failed' });
+    return res.status(500).json({ error: 'Liveness detection failed' });
   }
 });
 
@@ -166,7 +165,7 @@ router.post('/verify-multimodal',
       }
 
       if (!files?.face?.[0]) {
-        return res.status(400).json({ error: 'Face image is required for multi-modal verification' });
+        return res.status(500).json({ error: 'Face image is required for multi-modal verification' });
       }
 
       logger.info('Multi-modal verification requested', {
@@ -193,13 +192,13 @@ router.post('/verify-multimodal',
         riskScore: result.riskScore
       });
 
-      res.json(result);
+      return res.json(result);
     } catch (error) {
       logger.error('Multi-modal verification failed', {
         error: error instanceof Error ? error.message : 'Unknown error',
         userId: req.user?.id
       });
-      res.status(500).json({ error: 'Multi-modal verification failed' });
+      return res.status(500).json({ error: 'Multi-modal verification failed' });
     }
   }
 );
@@ -226,13 +225,13 @@ router.get('/history/:userId?', async (req, res) => {
       historyLength: history.length
     });
 
-    res.json({ userId, history });
+    return res.json({ userId, history });
   } catch (error) {
     logger.error('Failed to retrieve verification history', {
       error: error instanceof Error ? error.message : 'Unknown error',
       userId: req.params.userId || req.user?.id
     });
-    res.status(500).json({ error: 'Failed to retrieve history' });
+    return res.status(500).json({ error: 'Failed to retrieve history' });
   }
 });
 
@@ -250,12 +249,12 @@ router.get('/health', async (req, res) => {
       redis: 'connected' // Simplified for now
     };
 
-    res.json(health);
+    return res.json(health);
   } catch (error) {
     logger.error('Health check failed', {
       error: error instanceof Error ? error.message : 'Unknown error'
     });
-    res.status(500).json({ 
+    return res.status(500).json({ 
       status: 'unhealthy',
       error: error instanceof Error ? error.message : 'Unknown error'
     });

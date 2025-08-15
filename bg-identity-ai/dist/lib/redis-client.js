@@ -22,6 +22,7 @@ class RedisClient {
             host: process.env.REDIS_HOST || 'localhost',
             port: parseInt(process.env.REDIS_PORT || '6379', 10),
             db: parseInt(process.env.REDIS_DB || '0', 10),
+            password: process.env.REDIS_PASSWORD,
             retryDelayOnClusterDown: 100,
             enableReadyCheck: true,
             maxRetriesPerRequest: 3,
@@ -39,6 +40,7 @@ class RedisClient {
                 host: config.host,
                 port: config.port,
                 db: config.db,
+                password: config.password,
                 enableReadyCheck: config.enableReadyCheck,
                 maxRetriesPerRequest: config.maxRetriesPerRequest,
                 lazyConnect: config.lazyConnect,
@@ -292,6 +294,7 @@ class RedisClient {
                 host: config.host,
                 port: config.port,
                 db: config.db,
+                password: config.password,
                 lazyConnect: true
             });
             logger_1.logger.info('Redis subscriber created');

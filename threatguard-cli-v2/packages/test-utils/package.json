@@ -1,0 +1,51 @@
+{
+  "name": "@threatguard/test-utils",
+  "version": "2.0.0",
+  "description": "ThreatGuard Test Utils - Testing utilities and fixtures",
+  "type": "module",
+  "main": "./dist/index.js",
+  "exports": {
+    ".": {
+      "import": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    },
+    "./fixtures": {
+      "import": "./dist/fixtures/index.js",
+      "types": "./dist/fixtures/index.d.ts"
+    },
+    "./mocks": {
+      "import": "./dist/mocks/index.js",
+      "types": "./dist/mocks/index.d.ts"
+    }
+  },
+  "files": [
+    "dist",
+    "README.md"
+  ],
+  "scripts": {
+    "build": "node scripts/build.js",
+    "dev": "node scripts/dev.js",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@threatguard/core": "workspace:*",
+    "vitest": "^1.2.0",
+    "msw": "^2.1.5",
+    "nock": "^13.5.1"
+  },
+  "devDependencies": {
+    "esbuild": "^0.19.11"
+  },
+  "engines": {
+    "node": ">=20.0.0"
+  },
+  "keywords": [
+    "threatguard",
+    "testing",
+    "mocks",
+    "fixtures",
+    "utilities"
+  ]
+}

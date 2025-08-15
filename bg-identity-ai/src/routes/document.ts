@@ -36,7 +36,7 @@ router.post('/verify', upload.single('document'), async (req, res) => {
     }
 
     if (!['passport', 'driver_license', 'id_card'].includes(documentType)) {
-      return res.status(400).json({ error: 'Invalid document type' });
+      return res.status(500).json({ error: 'Invalid document type' });
     }
 
     logger.info('Document verification requested', {
@@ -60,13 +60,13 @@ router.post('/verify', upload.single('document'), async (req, res) => {
       confidence: result.confidence
     });
 
-    res.json(result);
+    return res.json(result);
   } catch (error) {
     logger.error('Document verification failed', {
       error: error instanceof Error ? error.message : 'Unknown error',
       userId: req.user?.id
     });
-    res.status(500).json({ error: 'Document verification failed' });
+    return res.status(500).json({ error: 'Document verification failed' });
   }
 });
 
@@ -99,13 +99,13 @@ router.post('/extract-text', upload.single('document'), async (req, res) => {
       confidence: result.confidence
     });
 
-    res.json(result);
+    return res.json(result);
   } catch (error) {
     logger.error('Text extraction failed', {
       error: error instanceof Error ? error.message : 'Unknown error',
       userId: req.user?.id
     });
-    res.status(500).json({ error: 'Text extraction failed' });
+    return res.status(500).json({ error: 'Text extraction failed' });
   }
 });
 
@@ -145,13 +145,13 @@ router.post('/authenticate', upload.single('document'), async (req, res) => {
       confidence: result.confidence
     });
 
-    res.json(result);
+    return res.json(result);
   } catch (error) {
     logger.error('Document authentication failed', {
       error: error instanceof Error ? error.message : 'Unknown error',
       userId: req.user?.id
     });
-    res.status(500).json({ error: 'Document authentication failed' });
+    return res.status(500).json({ error: 'Document authentication failed' });
   }
 });
 

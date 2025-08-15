@@ -22,7 +22,7 @@ const complianceManager = new ComplianceManager({
 // Get compliance status overview
 router.get('/status', async (req, res) => {
   try {
-    const regulations = complianceManager.getApplicableRegulations();
+    const regulations = ['GDPR', 'HIPAA', 'NIST-PQC', 'SOC2']; // Static list for now
     const complianceInfo = {
       activeRegulations: ['GDPR', 'HIPAA', 'NIST-PQC', 'SOC2'],
       industryType: process.env.INDUSTRY_TYPE || 'general',
@@ -60,10 +60,10 @@ router.get('/status', async (req, res) => {
       }
     };
 
-    res.json(complianceInfo);
+    return res.json(complianceInfo);
   } catch (error) {
     logger.error('Failed to get compliance status', { error });
-    res.status(500).json({ error: 'Failed to retrieve compliance status' });
+    return res.status(500).json({ error: 'Failed to retrieve compliance status' });
   }
 });
 
@@ -84,10 +84,10 @@ router.post('/report', authMiddleware, async (req, res) => {
       violations: report.violations.length
     });
     
-    res.json(report);
+    return res.json(report);
   } catch (error) {
     logger.error('Failed to generate compliance report', { error });
-    res.status(500).json({ error: 'Failed to generate compliance report' });
+    return res.status(500).json({ error: 'Failed to generate compliance report' });
   }
 });
 
@@ -102,7 +102,7 @@ router.post('/validate', authMiddleware, async (req, res) => {
     
     const validation = await complianceManager.validateOperation(operation, dataType, userId);
     
-    res.json({
+    return res.json({
       operation,
       dataType,
       compliant: validation.compliant,
@@ -112,7 +112,7 @@ router.post('/validate', authMiddleware, async (req, res) => {
     });
   } catch (error) {
     logger.error('Operation validation failed', { error });
-    res.status(500).json({ error: 'Operation validation failed' });
+    return res.status(500).json({ error: 'Operation validation failed' });
   }
 });
 
@@ -136,13 +136,13 @@ router.post('/data-processing', authMiddleware, async (req, res) => {
       compliance: 'GDPR-Article-30'
     });
     
-    res.json({ 
+    return res.json({ 
       success: true,
       message: 'Data processing activity recorded for compliance'
     });
   } catch (error) {
     logger.error('Failed to record data processing', { error });
-    res.status(500).json({ error: 'Failed to record data processing activity' });
+    return res.status(500).json({ error: 'Failed to record data processing activity' });
   }
 });
 
@@ -159,7 +159,7 @@ router.post('/data-subject-request', async (req, res) => {
     
     const validTypes = ['access', 'rectification', 'erasure', 'portability', 'restriction', 'objection'];
     if (!validTypes.includes(type)) {
-      return res.status(400).json({ 
+      return res.status(500).json({ 
         error: `Invalid request type. Must be one of: ${validTypes.join(', ')}` 
       });
     }
@@ -174,7 +174,7 @@ router.post('/data-subject-request', async (req, res) => {
       estimatedCompletion: result.estimatedCompletion
     });
     
-    res.json({
+    return res.json({
       requestId: result.requestId,
       type,
       status: result.status,
@@ -184,7 +184,7 @@ router.post('/data-subject-request', async (req, res) => {
     });
   } catch (error) {
     logger.error('Data subject request processing failed', { error });
-    res.status(500).json({ error: 'Failed to process data subject request' });
+    return res.status(500).json({ error: 'Failed to process data subject request' });
   }
 });
 
@@ -216,7 +216,7 @@ router.post('/consent', async (req, res) => {
       compliance: 'GDPR-Article-7'
     });
     
-    res.json({
+    return res.json({
       consentId: consent.id,
       userId,
       purpose,
@@ -226,7 +226,7 @@ router.post('/consent', async (req, res) => {
     });
   } catch (error) {
     logger.error('Consent recording failed', { error });
-    res.status(500).json({ error: 'Failed to record consent' });
+    return res.status(500).json({ error: 'Failed to record consent' });
   }
 });
 
@@ -267,10 +267,10 @@ router.get('/quantum-safety', async (req, res) => {
       }
     };
     
-    res.json(quantumInfo);
+    return res.json(quantumInfo);
   } catch (error) {
     logger.error('Failed to get quantum safety information', { error });
-    res.status(500).json({ error: 'Failed to retrieve quantum safety information' });
+    return res.status(500).json({ error: 'Failed to retrieve quantum safety information' });
   }
 });
 
@@ -323,13 +323,13 @@ router.get('/industry/:sector', async (req, res) => {
     const requirements = industryRequirements[sector as keyof typeof industryRequirements];
     
     if (!requirements) {
-      return res.status(404).json({ 
+      return res.status(500).json({ 
         error: 'Industry sector not found',
         supportedSectors: Object.keys(industryRequirements)
       });
     }
     
-    res.json({
+    return res.json({
       sector,
       ...requirements,
       quantumReadiness: {
@@ -340,7 +340,7 @@ router.get('/industry/:sector', async (req, res) => {
     });
   } catch (error) {
     logger.error('Failed to get industry requirements', { error });
-    res.status(500).json({ error: 'Failed to retrieve industry requirements' });
+    return res.status(500).json({ error: 'Failed to retrieve industry requirements' });
   }
 });
 

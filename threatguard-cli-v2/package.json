@@ -1,0 +1,71 @@
+{
+  "name": "@threatguard/cli-workspace",
+  "version": "2.0.0",
+  "description": "Modern ThreatGuard CLI - Console-based threat detection and behavioral analysis platform",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=20.0.0"
+  },
+  "workspaces": [
+    "packages/*"
+  ],
+  "scripts": {
+    "build": "npm run build --workspaces --if-present",
+    "start": "npm run start --workspace=@threatguard/cli",
+    "dev": "npm run dev --workspace=@threatguard/cli",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage",
+    "test:integration": "vitest run --config vitest.integration.config.ts",
+    "lint": "eslint packages/*/src/**/*.{ts,tsx}",
+    "lint:fix": "eslint packages/*/src/**/*.{ts,tsx} --fix",
+    "typecheck": "tsc --noEmit",
+    "format": "prettier --write packages/*/src/**/*.{ts,tsx}",
+    "clean": "rm -rf packages/*/dist && rm -rf packages/*/node_modules/.cache",
+    "prepare": "husky install"
+  },
+  "devDependencies": {
+    "@types/node": "^20.11.0",
+    "@typescript-eslint/eslint-plugin": "^6.19.0",
+    "@typescript-eslint/parser": "^6.19.0",
+    "@vitest/coverage-v8": "^1.6.1",
+    "esbuild": "^0.19.11",
+    "eslint": "^8.56.0",
+    "eslint-config-prettier": "^9.1.0",
+    "eslint-plugin-react": "^7.33.2",
+    "eslint-plugin-react-hooks": "^4.6.0",
+    "husky": "^8.0.3",
+    "lint-staged": "^15.2.0",
+    "prettier": "^3.2.4",
+    "typescript": "^5.3.3",
+    "vitest": "^1.6.1"
+  },
+  "lint-staged": {
+    "packages/*/src/**/*.{ts,tsx}": [
+      "eslint --fix",
+      "prettier --write"
+    ]
+  },
+  "keywords": [
+    "threat-detection",
+    "cybersecurity",
+    "behavioral-analysis",
+    "cli",
+    "real-time",
+    "security-operations",
+    "terminal",
+    "react",
+    "ink"
+  ],
+  "author": "ThreatGuard Security",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/threatguard/cli.git"
+  },
+  "bugs": {
+    "url": "https://github.com/threatguard/cli/issues"
+  },
+  "homepage": "https://github.com/threatguard/cli#readme"
+}

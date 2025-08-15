@@ -23,6 +23,11 @@ export interface StreamEvent {
     source: string;
     correlationId: string;
     userId?: string;
+    tags?: string[];
+    relevanceScore?: number;
+    channelId?: string;
+    priority?: string;
+    processedAt?: string;
   };
 }
 

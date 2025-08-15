@@ -21,3 +21,18 @@ declare module 'simple-statistics' {
 declare module 'node-cron' {
   export const schedule: any;
 }
+
+// Extend Express Request interface to include user property
+declare global {
+  namespace Express {
+    interface Request {
+      user?: {
+        id: string;
+        username: string;
+        email?: string;
+        role?: string;
+        [key: string]: any;
+      };
+    }
+  }
+}

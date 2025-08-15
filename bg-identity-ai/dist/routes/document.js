@@ -38,7 +38,7 @@ router.post('/verify', upload.single('document'), async (req, res) => {
             return res.status(401).json({ error: 'User not authenticated' });
         }
         if (!['passport', 'driver_license', 'id_card'].includes(documentType)) {
-            return res.status(400).json({ error: 'Invalid document type' });
+            return res.status(500).json({ error: 'Invalid document type' });
         }
         logger_1.logger.info('Document verification requested', {
             userId,
@@ -53,14 +53,14 @@ router.post('/verify', upload.single('document'), async (req, res) => {
             success: result.verified,
             confidence: result.confidence
         });
-        res.json(result);
+        return res.json(result);
     }
     catch (error) {
         logger_1.logger.error('Document verification failed', {
             error: error instanceof Error ? error.message : 'Unknown error',
             userId: req.user?.id
         });
-        res.status(500).json({ error: 'Document verification failed' });
+        return res.status(500).json({ error: 'Document verification failed' });
     }
 });
 // OCR text extraction
@@ -84,14 +84,14 @@ router.post('/extract-text', upload.single('document'), async (req, res) => {
             textLength: result.text.length,
             confidence: result.confidence
         });
-        res.json(result);
+        return res.json(result);
     }
     catch (error) {
         logger_1.logger.error('Text extraction failed', {
             error: error instanceof Error ? error.message : 'Unknown error',
             userId: req.user?.id
         });
-        res.status(500).json({ error: 'Text extraction failed' });
+        return res.status(500).json({ error: 'Text extraction failed' });
     }
 });
 // Document authenticity check
@@ -118,14 +118,14 @@ router.post('/authenticate', upload.single('document'), async (req, res) => {
             authentic: result.authentic,
             confidence: result.confidence
         });
-        res.json(result);
+        return res.json(result);
     }
     catch (error) {
         logger_1.logger.error('Document authentication failed', {
             error: error instanceof Error ? error.message : 'Unknown error',
             userId: req.user?.id
         });
-        res.status(500).json({ error: 'Document authentication failed' });
+        return res.status(500).json({ error: 'Document authentication failed' });
     }
 });
 //# sourceMappingURL=document.js.map

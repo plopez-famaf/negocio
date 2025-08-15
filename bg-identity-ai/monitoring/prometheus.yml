@@ -1,0 +1,66 @@
+# =================================================================
+# PROMETHEUS CONFIGURATION
+# bg-threat-ai Console-First Threat Detection Platform
+# =================================================================
+
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+
+# Rule files
+rule_files:
+  - "alert_rules.yml"
+
+# Scrape configurations
+scrape_configs:
+  # Prometheus itself
+  - job_name: 'prometheus'
+    static_configs:
+      - targets: ['localhost:9090']
+
+  # bg-threat-ai service health monitoring
+  - job_name: 'bg-threat-ai-health'
+    metrics_path: '/health'
+    scrape_interval: 10s
+    static_configs:
+      - targets: ['bg-threat-ai:3002']
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: __param_target
+      - source_labels: [__param_target]
+        target_label: instance
+      - target_label: __address__
+        replacement: 'bg-threat-ai:3002'
+
+  # Redis monitoring
+  - job_name: 'redis'
+    static_configs:
+      - targets: ['redis:6379']
+    metrics_path: '/metrics'
+
+  # NGINX monitoring
+  - job_name: 'nginx'
+    static_configs:
+      - targets: ['nginx:80']
+    metrics_path: '/nginx_status'
+    scrape_interval: 30s
+
+  # Node Exporter (if available)
+  - job_name: 'node-exporter'
+    static_configs:
+      - targets: ['node-exporter:9100']
+    scrape_interval: 30s
+
+  # Custom application metrics
+  - job_name: 'bg-threat-ai-metrics'
+    metrics_path: '/metrics'
+    static_configs:
+      - targets: ['bg-threat-ai:3002']
+    scrape_interval: 30s
+
+# Alerting configuration
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets:
+          - alertmanager:9093

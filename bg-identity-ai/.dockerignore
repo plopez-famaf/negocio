@@ -1,0 +1,151 @@
+# =================================================================
+# DOCKER IGNORE FILE
+# bg-threat-ai Console-First Threat Detection Platform
+# =================================================================
+
+# Node.js dependencies and build artifacts
+node_modules/
+npm-debug.log
+yarn-error.log
+.npm
+.yarn
+dist/
+coverage/
+
+# Environment and configuration files (use mounted configs instead)
+.env
+.env.*
+!.env.production
+
+# Development and testing files
+*.test.ts
+*.test.js
+*.spec.ts
+*.spec.js
+src/__tests__/
+scripts/test-*.js
+scripts/comprehensive-*.js
+scripts/performance-*.js
+scripts/websocket-*.js
+scripts/runtime-*.js
+
+# IDE and editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Logs and temporary files
+*.log
+logs/
+tmp/
+temp/
+bg-threat-ai.log
+
+# Git and version control
+.git/
+.gitignore
+.gitmodules
+
+# Documentation and markdown (not needed in container)
+*.md
+!README.md
+docs/
+
+# Configuration files for development
+docker-compose.yml
+docker-compose.*.yml
+Dockerfile
+.dockerignore
+
+# Build and deployment scripts
+scripts/build-*.js
+scripts/deploy-*.js
+
+# Testing and CI/CD
+.github/
+.gitlab-ci.yml
+.travis.yml
+.circleci/
+
+# Package manager lock files (copy package*.json instead)
+# package-lock.json (needed for npm ci)
+yarn.lock
+
+# TypeScript config (copied separately if needed)
+# tsconfig.json (needed for build process)
+tsconfig.*.json
+
+# ESLint and Prettier config
+.eslintrc.*
+.prettierrc.*
+.prettierignore
+
+# Vitest config
+vitest.config.ts
+
+# Coverage reports
+coverage/
+.nyc_output/
+
+# Security scanning results
+.snyk
+
+# Local environment overrides
+.env.local
+.env.*.local
+
+# Cache directories
+.cache/
+.parcel-cache/
+.next/
+.nuxt/
+
+# Runtime data
+pids/
+*.pid
+*.seed
+*.pid.lock
+
+# Dependency directories
+jspm_packages/
+
+# Optional REPL history
+.node_repl_history
+
+# Output of 'npm pack'
+*.tgz
+
+# Yarn integrity file
+.yarn-integrity
+
+# SSL certificates (mount as volumes)
+*.pem
+*.crt
+*.key
+
+# Backup files
+*.bak
+*.backup
+
+# =================================================================
+# PRODUCTION OPTIMIZATION NOTES
+# =================================================================
+
+# This .dockerignore file is optimized for:
+# 1. Minimal image size
+# 2. Security (no development files)
+# 3. Performance (no unnecessary files)
+# 4. Compliance (no sensitive data)
+#
+# Files are organized by category for easy maintenance

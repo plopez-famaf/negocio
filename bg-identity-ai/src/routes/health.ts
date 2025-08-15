@@ -28,8 +28,11 @@ router.get('/', async (req, res) => {
       healthCheck.status = 'degraded';
     }
 
+    const statusCode = healthCheck.status === 'healthy' ? 200 : 
+                      healthCheck.status === 'degraded' ? 200 : 503;
+
     logger.info('Health check requested', healthCheck);
-    res.status(200).json(healthCheck);
+    return res.status(statusCode).json(healthCheck);
   } catch (error) {
     logger.error('Health check failed', {
       error: error instanceof Error ? error.message : 'Unknown error'
@@ -45,7 +48,7 @@ router.get('/', async (req, res) => {
       error: 'Health check failed'
     };
     
-    res.status(503).json(healthCheck);
+    return res.status(500).json(healthCheck);
   }
 });
 
@@ -68,13 +71,13 @@ router.get('/ready', async (req, res) => {
     };
 
     const statusCode = readinessCheck.ready ? 200 : 503;
-    res.status(statusCode).json(readinessCheck);
+    return res.status(statusCode).json(readinessCheck);
   } catch (error) {
     logger.error('Readiness check failed', {
       error: error instanceof Error ? error.message : 'Unknown error'
     });
     
-    res.status(503).json({
+    return res.status(500).json({
       service: 'bg-identity-ai',
       ready: false,
       timestamp: new Date().toISOString(),
@@ -91,8 +94,8 @@ router.get('/redis', async (req, res) => {
     const redisHealth = {
       service: 'bg-identity-ai',
       component: 'redis',
-      timestamp: new Date().toISOString(),
-      ...detailedMetrics
+      ...detailedMetrics,
+      timestamp: new Date().toISOString()
     };
 
     const statusCode = detailedMetrics.overallStatus === 'healthy' ? 200 : 
@@ -104,13 +107,13 @@ router.get('/redis', async (req, res) => {
       responseTime: detailedMetrics.connection.responseTime
     });
 
-    res.status(statusCode).json(redisHealth);
+    return res.status(statusCode).json(redisHealth);
   } catch (error) {
     logger.error('Redis health check failed', {
       error: error instanceof Error ? error.message : 'Unknown error'
     });
     
-    res.status(503).json({
+    return res.status(500).json({
       service: 'bg-identity-ai',
       component: 'redis',
       timestamp: new Date().toISOString(),
@@ -152,13 +155,13 @@ router.get('/detailed', async (req, res) => {
       cacheHitRate: redisMetrics.cache.hitRate
     });
 
-    res.status(statusCode).json(detailedHealth);
+    return res.status(statusCode).json(detailedHealth);
   } catch (error) {
     logger.error('Detailed health check failed', {
       error: error instanceof Error ? error.message : 'Unknown error'
     });
     
-    res.status(503).json({
+    return res.status(500).json({
       service: 'bg-identity-ai',
       timestamp: new Date().toISOString(),
       overallStatus: 'unhealthy',

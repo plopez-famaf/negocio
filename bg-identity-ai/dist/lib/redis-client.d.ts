@@ -3,6 +3,7 @@ export interface RedisConfig {
     host: string;
     port: number;
     db: number;
+    password?: string;
     retryDelayOnClusterDown: number;
     enableReadyCheck: boolean;
     maxRetriesPerRequest: number;

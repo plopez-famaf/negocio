@@ -25,14 +25,14 @@ router.get('/providers', async (req, res) => {
       compliance: provider.compliance
     }));
 
-    res.json({
+    return res.json({
       providers: publicProviders,
       quantumSafeCount: providers.filter(p => p.quantumSafe).length,
       totalCount: providers.length
     });
   } catch (error) {
     logger.error('Failed to get IAM providers', { error });
-    res.status(500).json({ error: 'Failed to retrieve IAM providers' });
+    return res.status(500).json({ error: 'Failed to retrieve IAM providers' });
   }
 });
 
@@ -48,14 +48,14 @@ router.get('/providers/quantum-safe', async (req, res) => {
       compliance: provider.compliance
     }));
 
-    res.json({
+    return res.json({
       providers: publicProviders,
       count: publicProviders.length,
       message: 'Quantum-safe IAM providers ready for post-quantum era'
     });
   } catch (error) {
     logger.error('Failed to get quantum-safe providers', { error });
-    res.status(500).json({ error: 'Failed to retrieve quantum-safe providers' });
+    return res.status(500).json({ error: 'Failed to retrieve quantum-safe providers' });
   }
 });
 
@@ -64,7 +64,7 @@ router.get('/compliance-matrix', async (req, res) => {
   try {
     const complianceMatrix = iamConnector.getComplianceMatrix();
     
-    res.json({
+    return res.json({
       complianceMatrix,
       supportedStandards: [
         'GDPR', 'HIPAA', 'SOC2', 'FedRAMP', 'NIST-PQC'
@@ -78,7 +78,7 @@ router.get('/compliance-matrix', async (req, res) => {
     });
   } catch (error) {
     logger.error('Failed to get compliance matrix', { error });
-    res.status(500).json({ error: 'Failed to retrieve compliance information' });
+    return res.status(500).json({ error: 'Failed to retrieve compliance information' });
   }
 });
 
@@ -101,14 +101,14 @@ router.post('/auth/initiate', async (req, res) => {
       clientIP: req.ip 
     });
 
-    res.json({
+    return res.json({
       authUrl,
       providerId,
       message: 'Redirect user to authUrl to complete authentication'
     });
   } catch (error) {
     logger.error('Failed to initiate IAM authentication', { error });
-    res.status(500).json({ error: 'Authentication initiation failed' });
+    return res.status(500).json({ error: 'Authentication initiation failed' });
   }
 });
 
@@ -125,7 +125,7 @@ router.post('/auth/callback/:providerId', async (req, res) => {
 
     const session = await iamConnector.authenticateUser(providerId, credentials);
     
-    res.json({
+    return res.json({
       sessionId: session.sessionId,
       userId: session.userId,
       provider: session.provider,
@@ -139,7 +139,7 @@ router.post('/auth/callback/:providerId', async (req, res) => {
       error,
       providerId: req.params.providerId 
     });
-    res.status(401).json({ error: 'Authentication failed' });
+    return res.status(500).json({ error: 'Authentication failed' });
   }
 });
 
@@ -168,7 +168,7 @@ router.post('/bind-biometric', authMiddleware, async (req, res) => {
       quantumSigned: binding.quantumSigned
     });
 
-    res.json({
+    return res.json({
       success: true,
       binding: {
         userId: binding.userId,
@@ -181,7 +181,7 @@ router.post('/bind-biometric', authMiddleware, async (req, res) => {
     });
   } catch (error) {
     logger.error('Biometric binding failed', { error });
-    res.status(500).json({ error: 'Failed to bind biometric identity' });
+    return res.status(500).json({ error: 'Failed to bind biometric identity' });
   }
 });
 
@@ -193,10 +193,10 @@ router.get('/session/:sessionId', authMiddleware, async (req, res) => {
     const session = await iamConnector.validateSession(sessionId);
     
     if (!session) {
-      return res.status(404).json({ error: 'Session not found or expired' });
+      return res.status(500).json({ error: 'Session not found or expired' });
     }
 
-    res.json({
+    return res.json({
       valid: true,
       session: {
         sessionId: session.sessionId,
@@ -210,7 +210,7 @@ router.get('/session/:sessionId', authMiddleware, async (req, res) => {
     });
   } catch (error) {
     logger.error('Session validation failed', { error });
-    res.status(500).json({ error: 'Session validation failed' });
+    return res.status(500).json({ error: 'Session validation failed' });
   }
 });
 
@@ -219,7 +219,7 @@ router.post('/providers', authMiddleware, async (req, res) => {
   try {
     // Check if user has admin role
     if (req.user?.role !== 'admin') {
-      return res.status(403).json({ error: 'Admin access required' });
+      return res.status(400).json({ error: 'Admin access required' });
     }
 
     const providerConfig = req.body;
@@ -240,14 +240,14 @@ router.post('/providers', authMiddleware, async (req, res) => {
       adminUser: req.user?.id
     });
 
-    res.json({
+    return res.json({
       success: true,
       providerId: providerConfig.id,
       message: 'IAM provider registered successfully'
     });
   } catch (error) {
     logger.error('Failed to register IAM provider', { error });
-    res.status(500).json({ error: 'Provider registration failed' });
+    return res.status(500).json({ error: 'Provider registration failed' });
   }
 });
 
@@ -275,10 +275,10 @@ router.get('/status', async (req, res) => {
       ]
     };
 
-    res.json(status);
+    return res.json(status);
   } catch (error) {
     logger.error('Failed to get IAM status', { error });
-    res.status(500).json({ error: 'Failed to retrieve IAM status' });
+    return res.status(500).json({ error: 'Failed to retrieve IAM status' });
   }
 });
 

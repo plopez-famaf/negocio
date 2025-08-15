@@ -3,6 +3,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.threatCache = exports.ThreatCache = void 0;
 const redis_client_1 = require("../redis-client");
 const logger_1 = require("../logger");
+const redis_health_monitor_1 = require("../monitoring/redis-health-monitor");
 class ThreatCache {
     prefixes = {
         threats: 'threats',
@@ -52,13 +53,17 @@ class ThreatCache {
         const key = this.buildKey(this.prefixes.events, eventId);
         try {
             const cached = await redis_client_1.redisClient.get(key);
-            if (!cached)
+            if (!cached) {
+                redis_health_monitor_1.redisHealthMonitor.recordCacheMiss();
                 return null;
+            }
             const event = JSON.parse(cached);
+            redis_health_monitor_1.redisHealthMonitor.recordCacheHit();
             logger_1.logger.debug('Threat event retrieved from cache', { eventId });
             return event;
         }
         catch (error) {
+            redis_health_monitor_1.redisHealthMonitor.recordCacheMiss();
             logger_1.logger.error('Failed to retrieve threat event from cache', {
                 eventId,
                 error: error instanceof Error ? error.message : 'Unknown error'
@@ -91,13 +96,17 @@ class ThreatCache {
         const key = this.buildKey(this.prefixes.behavior, target, analysisType);
         try {
             const cached = await redis_client_1.redisClient.get(key);
-            if (!cached)
+            if (!cached) {
+                redis_health_monitor_1.redisHealthMonitor.recordCacheMiss();
                 return null;
+            }
             const baseline = JSON.parse(cached);
+            redis_health_monitor_1.redisHealthMonitor.recordCacheHit();
             logger_1.logger.debug('Behavior baseline retrieved from cache', { target, analysisType });
             return baseline;
         }
         catch (error) {
+            redis_health_monitor_1.redisHealthMonitor.recordCacheMiss();
             logger_1.logger.error('Failed to retrieve behavior baseline from cache', {
                 target,
                 analysisType,
@@ -130,13 +139,17 @@ class ThreatCache {
         const key = this.buildKey(this.prefixes.intelligence, ioc);
         try {
             const cached = await redis_client_1.redisClient.get(key);
-            if (!cached)
+            if (!cached) {
+                redis_health_monitor_1.redisHealthMonitor.recordCacheMiss();
                 return null;
+            }
             const data = JSON.parse(cached);
+            redis_health_monitor_1.redisHealthMonitor.recordCacheHit();
             logger_1.logger.debug('Threat intelligence retrieved from cache', { ioc, type: data.type });
             return data;
         }
         catch (error) {
+            redis_health_monitor_1.redisHealthMonitor.recordCacheMiss();
             logger_1.logger.error('Failed to retrieve threat intelligence from cache', {
                 ioc,
                 error: error instanceof Error ? error.message : 'Unknown error'

@@ -33,13 +33,13 @@ router.post('/detect-realtime', async (req, res) => {
       riskScore: result.overallRiskScore
     });
 
-    res.json(result);
+    return res.json(result);
   } catch (error) {
     logger.error('Real-time threat detection failed', {
       error: error instanceof Error ? error.message : 'Unknown error',
       userId: req.user?.id
     });
-    res.status(500).json({ error: 'Real-time threat detection failed' });
+    return res.status(500).json({ error: 'Real-time threat detection failed' });
   }
 });
 
@@ -54,7 +54,7 @@ router.post('/analyze-behavior', async (req, res) => {
     }
 
     if (!target) {
-      return res.status(400).json({ error: 'Target is required for behavioral analysis' });
+      return res.status(500).json({ error: 'Target is required for behavioral analysis' });
     }
 
     logger.info('Behavioral analysis requested', {
@@ -77,13 +77,13 @@ router.post('/analyze-behavior', async (req, res) => {
       patternsFound: result.patterns.length
     });
 
-    res.json(result);
+    return res.json(result);
   } catch (error) {
     logger.error('Behavioral analysis failed', {
       error: error instanceof Error ? error.message : 'Unknown error',
       userId: req.user?.id
     });
-    res.status(500).json({ error: 'Behavioral analysis failed' });
+    return res.status(500).json({ error: 'Behavioral analysis failed' });
   }
 });
 
@@ -115,13 +115,13 @@ router.post('/monitor-network', async (req, res) => {
       suspiciousEvents: result.suspiciousEvents
     });
 
-    res.json(result);
+    return res.json(result);
   } catch (error) {
     logger.error('Network monitoring failed', {
       error: error instanceof Error ? error.message : 'Unknown error',
       userId: req.user?.id
     });
-    res.status(500).json({ error: 'Network monitoring failed' });
+    return res.status(500).json({ error: 'Network monitoring failed' });
   }
 });
 
@@ -153,13 +153,13 @@ router.post('/query-intelligence', async (req, res) => {
       maliciousFound: result.results.filter((r: any) => r.reputation === 'malicious').length
     });
 
-    res.json(result);
+    return res.json(result);
   } catch (error) {
     logger.error('Threat intelligence query failed', {
       error: error instanceof Error ? error.message : 'Unknown error',
       userId: req.user?.id
     });
-    res.status(500).json({ error: 'Threat intelligence query failed' });
+    return res.status(500).json({ error: 'Threat intelligence query failed' });
   }
 });
 
@@ -191,13 +191,13 @@ router.post('/correlate-threats', async (req, res) => {
       highRiskCorrelations: result.correlations.filter((c: any) => c.riskScore >= 8).length
     });
 
-    res.json(result);
+    return res.json(result);
   } catch (error) {
     logger.error('Threat correlation failed', {
       error: error instanceof Error ? error.message : 'Unknown error',
       userId: req.user?.id
     });
-    res.status(500).json({ error: 'Threat correlation failed' });
+    return res.status(500).json({ error: 'Threat correlation failed' });
   }
 });
 
@@ -230,13 +230,13 @@ router.get('/history', async (req, res) => {
       filters
     });
 
-    res.json({ threats, totalCount: threats.length });
+    return res.json({ threats, totalCount: threats.length });
   } catch (error) {
     logger.error('Failed to retrieve threat history', {
       error: error instanceof Error ? error.message : 'Unknown error',
       userId: req.user?.id
     });
-    res.status(500).json({ error: 'Failed to retrieve threat history' });
+    return res.status(500).json({ error: 'Failed to retrieve threat history' });
   }
 });
 
@@ -264,14 +264,14 @@ router.get('/risk-profile/:target', async (req, res) => {
       riskLevel: riskProfile.riskLevel
     });
 
-    res.json(riskProfile);
+    return res.json(riskProfile);
   } catch (error) {
     logger.error('Failed to generate risk profile', {
       error: error instanceof Error ? error.message : 'Unknown error',
       userId: req.user?.id,
       target: req.params.target
     });
-    res.status(500).json({ error: 'Failed to generate risk profile' });
+    return res.status(500).json({ error: 'Failed to generate risk profile' });
   }
 });
 
@@ -299,12 +299,12 @@ router.get('/health', async (req, res) => {
       }
     };
 
-    res.json(health);
+    return res.json(health);
   } catch (error) {
     logger.error('Health check failed', {
       error: error instanceof Error ? error.message : 'Unknown error'
     });
-    res.status(500).json({ 
+    return res.status(500).json({ 
       status: 'unhealthy',
       error: error instanceof Error ? error.message : 'Unknown error'
     });

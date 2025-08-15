@@ -27,6 +27,7 @@
       "@/*": ["./*"]
     }
   },
-  "include": ["src/**/*"],
+  "include": ["src/**/*", "src/types/express.d.ts"],
+  "typeRoots": ["./node_modules/@types", "./src/types"],
   "exclude": ["node_modules", "dist", "**/*.test.ts"]
 }

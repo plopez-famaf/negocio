@@ -192,7 +192,7 @@ class BgWebClient {
                 status,
                 correlationId: this.correlationId,
                 error: error.message,
-                status: error.response?.status,
+                httpStatus: error.response?.status,
             });
             return {
                 success: false,

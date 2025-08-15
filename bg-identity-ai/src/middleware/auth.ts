@@ -2,15 +2,7 @@ import { Request, Response, NextFunction } from 'express';
 import jwt from 'jsonwebtoken';
 import { logger } from '@/lib/logger';
 
-interface AuthenticatedRequest extends Request {
-  user?: {
-    id: string;
-    email: string;
-    role: string;
-  };
-}
-
-export const authMiddleware = (req: AuthenticatedRequest, res: Response, next: NextFunction): void => {
+export const authMiddleware = (req: Request, res: Response, next: NextFunction): void => {
   const token = req.header('Authorization')?.replace('Bearer ', '');
   
   if (!token) {

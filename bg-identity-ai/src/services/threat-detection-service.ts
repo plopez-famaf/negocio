@@ -3,6 +3,8 @@ import { ComplianceManager } from '@/lib/compliance/compliance-manager';
 import { bgWebClient } from '@/lib/bg-web-client';
 import { redisClient } from '@/lib/redis-client';
 import { threatCache } from '@/lib/cache/threat-cache';
+import { mlThreatDetectionService, MLThreatAnalysisResult, FeatureExtractionConfig } from '@/services/ml-threat-detection-service';
+import { MLThreatAdapters } from '@/adapters/ml-threat-adapters';
 
 export interface ThreatEvent {
   id: string;
@@ -107,9 +109,13 @@ export interface ThreatIntelligenceResult {
 
 export class ThreatDetectionService {
   private complianceManager: ComplianceManager;
+  private mlService: typeof mlThreatDetectionService;
+  private mlEnabled: boolean = true;
   
   constructor() {
-
+    // Initialize ML service
+    this.mlService = mlThreatDetectionService;
+    
     // Initialize compliance management
     this.complianceManager = new ComplianceManager({
       regulations: ['GDPR', 'SOX', 'PCI-DSS', 'SOC2'],
@@ -126,8 +132,34 @@ export class ThreatDetectionService {
       behavioralAnalysis: true,
       networkMonitoring: true,
       threatIntelligence: true,
+      mlEnhanced: this.mlEnabled,
       complianceFrameworks: ['GDPR', 'SOX', 'PCI-DSS', 'SOC2']
     });
+    
+    // Initialize ML service asynchronously
+    this.initializeMLService();
+  }
+
+  /**
+   * Initialize ML service
+   */
+  private async initializeMLService(): Promise<void> {
+    try {
+      await this.mlService.initialize();
+      const healthCheck = await this.mlService.healthCheck();
+      this.mlEnabled = healthCheck.healthy;
+      
+      logger.info('ML service initialization completed', {
+        enabled: this.mlEnabled,
+        fallbackMode: healthCheck.fallbackMode,
+        modelsLoaded: healthCheck.models.filter(m => m.available).length
+      });
+    } catch (error) {
+      logger.warn('ML service initialization failed, continuing in traditional mode', {
+        error: error instanceof Error ? error.message : 'Unknown error'
+      });
+      this.mlEnabled = false;
+    }
   }
 
   async detectThreatsRealtime(events: any[], source: string, userId: string): Promise<ThreatDetectionResult> {
@@ -150,25 +182,42 @@ export class ThreatDetectionService {
         metadata: { eventCount: events.length, source }
       });
 
-      // Simulate threat detection processing
-      await this.simulateProcessingDelay(500, 1500);
+      // Real-time threat detection processing (removed artificial delay)
 
       const detectionId = `td_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
       const threats: ThreatEvent[] = [];
       const summary = { critical: 0, high: 0, medium: 0, low: 0 };
 
-      // Process each event through threat detection algorithms
-      for (let i = 0; i < events.length; i++) {
-        const event = events[i];
-        const threatProbability = this.calculateThreatProbability(event);
-        
-        if (threatProbability > 0.3) { // 30% threshold for threat detection
-          const threat = this.generateThreatEvent(event, source, threatProbability);
-          threats.push(threat);
+      // ML-Enhanced threat detection with fallback
+      if (this.mlEnabled) {
+        try {
+          const mlAnalysisResult = await this.performMLThreatAnalysis(events, userId);
           
-          // Update summary
-          summary[threat.severity as keyof typeof summary]++;
+          // Add ML-generated threat events
+          threats.push(...mlAnalysisResult.threatEvents);
+          
+          // Update summary from ML threats
+          mlAnalysisResult.threatEvents.forEach(threat => {
+            summary[threat.severity as keyof typeof summary]++;
+          });
+          
+          logger.info('ML threat analysis completed', {
+            mlAnalysisId: mlAnalysisResult.analysisId,
+            mlThreatsGenerated: mlAnalysisResult.threatEvents.length,
+            combinedThreatScore: mlAnalysisResult.combinedThreatScore,
+            modelsUsed: mlAnalysisResult.mlMetadata.modelsUsed
+          });
+          
+        } catch (error) {
+          logger.warn('ML threat analysis failed, falling back to traditional detection', {
+            error: error instanceof Error ? error.message : 'Unknown error'
+          });
+          // Fallback to traditional detection
+          await this.performTraditionalThreatDetection(events, source, threats, summary);
         }
+      } else {
+        // Traditional threat detection
+        await this.performTraditionalThreatDetection(events, source, threats, summary);
       }
 
       const overallRiskScore = this.calculateOverallRiskScore(threats);
@@ -292,6 +341,44 @@ export class ThreatDetectionService {
     }
   }
 
+  /**
+   * Perform ML-enhanced threat analysis
+   */
+  private async performMLThreatAnalysis(events: any[], userId?: string): Promise<MLThreatAnalysisResult> {
+    const config: FeatureExtractionConfig = {
+      includeNetworkFeatures: true,
+      includeBehavioralFeatures: !!userId,
+      timeWindowMinutes: 60,
+      maxEventsPerAnalysis: 1000
+    };
+    
+    return await this.mlService.analyzeThreatEvents(events, userId, config);
+  }
+  
+  /**
+   * Perform traditional threat detection as fallback
+   */
+  private async performTraditionalThreatDetection(
+    events: any[], 
+    source: string, 
+    threats: ThreatEvent[], 
+    summary: { critical: number; high: number; medium: number; low: number }
+  ): Promise<void> {
+    // Process each event through traditional threat detection algorithms
+    for (let i = 0; i < events.length; i++) {
+      const event = events[i];
+      const threatProbability = this.calculateThreatProbability(event);
+      
+      if (threatProbability > 0.1) { // 10% threshold for higher sensitivity threat detection
+        const threat = this.generateThreatEvent(event, source, threatProbability);
+        threats.push(threat);
+        
+        // Update summary
+        summary[threat.severity as keyof typeof summary]++;
+      }
+    }
+  }
+
   async analyzeBehavior(request: BehaviorAnalysisRequest): Promise<BehaviorAnalysisResult> {
     try {
       logger.info('Processing behavioral analysis', {
@@ -300,32 +387,58 @@ export class ThreatDetectionService {
         timeRange: request.timeRange
       });
 
-      await this.simulateProcessingDelay(1000, 2000);
-
       const analysisId = `ba_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-      const patterns: BehaviorPattern[] = [];
+      let patterns: BehaviorPattern[] = [];
+      let overallRiskScore = 0;
+      let anomalies = 0;
+      let recommendations: string[] = [];
       
-      // Generate mock behavioral patterns
-      const patternTypes = [
-        'login_frequency_anomaly',
-        'access_time_deviation', 
-        'data_access_pattern_change',
-        'network_usage_spike',
-        'privilege_escalation_attempt'
-      ];
-
-      for (let i = 0; i < Math.floor(Math.random() * 3) + 1; i++) {
-        const pattern = this.generateBehaviorPattern(
-          request.target, 
-          patternTypes[Math.floor(Math.random() * patternTypes.length)]
-        );
-        patterns.push(pattern);
+      // ML-Enhanced behavioral analysis with fallback
+      if (this.mlEnabled && request.analysisType === 'user') {
+        try {
+          // Simulate events for the user in the time range
+          const mockEvents = this.generateMockEventsForTimeRange(request.target, request.timeRange);
+          
+          const mlAnalysisResult = await this.mlService.analyzeThreatEvents(
+            mockEvents, 
+            request.target,
+            {
+              includeNetworkFeatures: false,
+              includeBehavioralFeatures: true,
+              timeWindowMinutes: this.calculateTimeWindowMinutes(request.timeRange),
+              maxEventsPerAnalysis: 500
+            }
+          );
+          
+          // Transform ML results to behavior patterns for API compatibility
+          if (mlAnalysisResult.mlModelResults.behaviorAnalysis) {
+            patterns = MLThreatAdapters.transformToBehaviorPatterns(mlAnalysisResult.mlModelResults.behaviorAnalysis);
+            overallRiskScore = mlAnalysisResult.combinedThreatScore;
+            anomalies = mlAnalysisResult.mlModelResults.behaviorAnalysis.anomalies.length;
+            recommendations = mlAnalysisResult.mlModelResults.behaviorAnalysis.recommendations;
+          }
+          
+          logger.info('ML behavioral analysis completed', {
+            analysisId,
+            target: request.target,
+            mlPatternsFound: patterns.length,
+            mlAnomalies: anomalies,
+            mlRiskScore: overallRiskScore
+          });
+          
+        } catch (error) {
+          logger.warn('ML behavioral analysis failed, falling back to traditional analysis', {
+            analysisId,
+            target: request.target,
+            error: error instanceof Error ? error.message : 'Unknown error'
+          });
+          // Fallback to traditional analysis
+          ({ patterns, overallRiskScore, anomalies, recommendations } = this.performTraditionalBehaviorAnalysis(request.target));
+        }
+      } else {
+        // Traditional behavioral analysis
+        ({ patterns, overallRiskScore, anomalies, recommendations } = this.performTraditionalBehaviorAnalysis(request.target));
       }
-
-      const overallRiskScore = this.calculateBehaviorRiskScore(patterns);
-      const anomalies = patterns.filter(p => p.anomalyScore > 0.7).length;
-      
-      const recommendations = this.generateRecommendations(patterns, overallRiskScore);
 
       const result: BehaviorAnalysisResult = {
         analysisId,
@@ -368,7 +481,7 @@ export class ThreatDetectionService {
         options
       });
 
-      await this.simulateProcessingDelay(800, 1200);
+      // Real-time network monitoring processing (removed artificial delay)
 
       const monitoringId = `nm_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
       const events: NetworkEvent[] = [];
@@ -440,7 +553,7 @@ export class ThreatDetectionService {
         sources: sources || 'all'
       });
 
-      await this.simulateProcessingDelay(1200, 1800);
+      // Real-time threat intelligence processing (removed artificial delay)
 
       const queryId = `ti_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
       const results: ThreatIntelligenceResult['results'] = [];
@@ -505,7 +618,7 @@ export class ThreatDetectionService {
         timeWindow: timeWindow || '1h'
       });
 
-      await this.simulateProcessingDelay(1500, 2500);
+      // Real-time threat correlation processing (removed artificial delay)
 
       const correlationId = `tc_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
       const correlations = this.findThreatCorrelations(events);
@@ -588,20 +701,193 @@ export class ThreatDetectionService {
     }
   }
 
+  /**
+   * Generate mock events for behavioral analysis time range
+   */
+  private generateMockEventsForTimeRange(userId: string, timeRange: { start: string; end: string }): any[] {
+    const events = [];
+    const startTime = new Date(timeRange.start).getTime();
+    const endTime = new Date(timeRange.end).getTime();
+    const eventCount = Math.floor(Math.random() * 50) + 10; // 10-60 events
+    
+    for (let i = 0; i < eventCount; i++) {
+      const timestamp = new Date(startTime + Math.random() * (endTime - startTime));
+      const eventTypes = ['login', 'file_access', 'network_access', 'system_command', 'data_transfer'];
+      
+      events.push({
+        id: `event_${Date.now()}_${i}`,
+        timestamp: timestamp.toISOString(),
+        userId,
+        type: 'behavioral',
+        action: eventTypes[Math.floor(Math.random() * eventTypes.length)],
+        sourceIp: `192.168.1.${Math.floor(Math.random() * 255)}`,
+        success: Math.random() > 0.1, // 90% success rate
+        metadata: {
+          userAgent: 'Mozilla/5.0 (compatible)',
+          sessionId: `session_${Date.now()}`
+        }
+      });
+    }
+    
+    return events;
+  }
+  
+  /**
+   * Calculate time window in minutes from time range
+   */
+  private calculateTimeWindowMinutes(timeRange: { start: string; end: string }): number {
+    const startTime = new Date(timeRange.start).getTime();
+    const endTime = new Date(timeRange.end).getTime();
+    return Math.round((endTime - startTime) / (1000 * 60)); // Convert to minutes
+  }
+  
+  /**
+   * Perform traditional behavioral analysis as fallback
+   */
+  private performTraditionalBehaviorAnalysis(target: string): {
+    patterns: BehaviorPattern[];
+    overallRiskScore: number;
+    anomalies: number;
+    recommendations: string[];
+  } {
+    const patterns: BehaviorPattern[] = [];
+    
+    // Generate traditional behavioral patterns
+    const patternTypes = [
+      'login_frequency_anomaly',
+      'access_time_deviation', 
+      'data_access_pattern_change',
+      'network_usage_spike',
+      'privilege_escalation_attempt'
+    ];
+
+    for (let i = 0; i < Math.floor(Math.random() * 3) + 1; i++) {
+      const pattern = this.generateBehaviorPattern(
+        target, 
+        patternTypes[Math.floor(Math.random() * patternTypes.length)]
+      );
+      patterns.push(pattern);
+    }
+
+    const overallRiskScore = this.calculateBehaviorRiskScore(patterns);
+    const anomalies = patterns.filter(p => p.anomalyScore > 0.7).length;
+    const recommendations = this.generateRecommendations(patterns, overallRiskScore);
+    
+    return { patterns, overallRiskScore, anomalies, recommendations };
+  }
+
   // Helper methods
   private calculateThreatProbability(event: any): number {
-    // Simulate threat probability calculation
-    let probability = Math.random() * 0.4; // Base random probability
+    // Enhanced threat probability calculation with real threat patterns
+    let probability = 0.1; // Base probability for better detection
 
-    // Increase probability based on suspicious indicators
-    if (event.type === 'network' && event.protocol === 'tcp' && event.port === 22) {
-      probability += 0.3; // SSH attempts
+    // Network-based threat indicators
+    if (event.type === 'network') {
+      // Common attack ports
+      const maliciousPorts = [22, 23, 80, 443, 445, 3389, 1433, 3306];
+      if (event.port && maliciousPorts.includes(event.port)) {
+        probability += 0.3;
+      }
+      
+      // Suspicious protocols
+      if (event.protocol === 'tcp' && event.bytes > 100000) {
+        probability += 0.2; // Large data transfers
+      }
+      
+      // Port scanning patterns
+      if (event.connectionCount && event.connectionCount > 50) {
+        probability += 0.4; // Port scanning behavior
+      }
     }
-    if (event.type === 'behavioral' && event.deviation > 2.0) {
-      probability += 0.4; // High behavioral deviation
+
+    // Behavioral threat indicators
+    if (event.type === 'behavioral') {
+      // Unusual access patterns
+      if (event.deviation && event.deviation > 2.0) {
+        probability += 0.4; // High behavioral deviation
+      }
+      
+      // Unusual time access
+      if (event.time && (event.time < 6 || event.time > 22)) {
+        probability += 0.2; // Outside business hours
+      }
+      
+      // Excessive resource usage
+      if (event.volume && event.volume > 1000) {
+        probability += 0.3; // High volume activity
+      }
     }
-    if (event.source?.includes('unknown') || event.source?.includes('suspicious')) {
-      probability += 0.5; // Suspicious sources
+
+    // Malware indicators
+    if (event.type === 'malware') {
+      // Known malware signatures
+      const malwareSignatures = ['trojan', 'virus', 'backdoor', 'rootkit', 'keylogger'];
+      if (event.signature && malwareSignatures.some(sig => event.signature.toLowerCase().includes(sig))) {
+        probability += 0.8; // High confidence malware detection
+      }
+      
+      // Suspicious file hashes
+      if (event.fileHash && event.fileHash.length === 32) {
+        probability += 0.5; // MD5 hash pattern
+      }
+    }
+
+    // Source reputation indicators
+    if (event.source) {
+      const suspiciousSources = ['unknown', 'suspicious', 'tor', 'proxy', 'compromised'];
+      if (suspiciousSources.some(source => event.source.toLowerCase().includes(source))) {
+        probability += 0.5; // Suspicious sources
+      }
+      
+      // Geographic risk indicators
+      const highRiskCountries = ['CN', 'RU', 'KP', 'IR'];
+      if (event.country && highRiskCountries.includes(event.country)) {
+        probability += 0.3; // High-risk geographic locations
+      }
+    }
+
+    // Intrusion indicators
+    if (event.type === 'intrusion') {
+      // SQL injection patterns
+      if (event.payload && /('|\"|;|--|\bor\b|\bunion\b|\bselect\b)/i.test(event.payload)) {
+        probability += 0.7; // SQL injection attempt
+      }
+      
+      // XSS patterns
+      if (event.payload && /<script|javascript:|on\w+=/i.test(event.payload)) {
+        probability += 0.6; // XSS attempt
+      }
+      
+      // Command injection patterns
+      if (event.payload && /(\||&|;|\$\(|\`)/i.test(event.payload)) {
+        probability += 0.6; // Command injection attempt
+      }
+    }
+
+    // Authentication threat indicators
+    if (event.type === 'authentication') {
+      // Brute force indicators
+      if (event.failedAttempts && event.failedAttempts > 10) {
+        probability += 0.6; // Brute force attack
+      }
+      
+      // Credential stuffing
+      if (event.userAgent && event.userAgent.includes('bot')) {
+        probability += 0.4; // Automated attacks
+      }
+    }
+
+    // Anomaly detection
+    if (event.type === 'anomaly') {
+      // Statistical anomalies
+      if (event.anomalyScore && event.anomalyScore > 0.8) {
+        probability += 0.5; // High anomaly score
+      }
+      
+      // Baseline deviations
+      if (event.baselineDeviation && event.baselineDeviation > 3.0) {
+        probability += 0.4; // Significant deviation from baseline
+      }
     }
 
     return Math.min(probability, 1.0);
@@ -865,8 +1151,60 @@ export class ThreatDetectionService {
     return new Promise(resolve => setTimeout(resolve, delay));
   }
 
+  /**
+   * Get ML service health status
+   */
+  async getMLServiceHealth(): Promise<{
+    enabled: boolean;
+    healthy: boolean;
+    models: Array<{ name: string; available: boolean; lastUsed?: string }>;
+    fallbackMode: boolean;
+  }> {
+    if (!this.mlEnabled) {
+      return {
+        enabled: false,
+        healthy: false,
+        models: [],
+        fallbackMode: true
+      };
+    }
+    
+    try {
+      const healthCheck = await this.mlService.healthCheck();
+      return {
+        enabled: this.mlEnabled,
+        ...healthCheck
+      };
+    } catch (error) {
+      logger.warn('ML service health check failed', {
+        error: error instanceof Error ? error.message : 'Unknown error'
+      });
+      return {
+        enabled: this.mlEnabled,
+        healthy: false,
+        models: [],
+        fallbackMode: true
+      };
+    }
+  }
+
   async cleanup(): Promise<void> {
-    await redisClient.disconnect();
-    logger.info('ThreatDetectionService Redis connection closed');
+    try {
+      // Cleanup ML service
+      if (this.mlEnabled) {
+        await this.mlService.cleanup();
+      }
+      
+      // Cleanup Redis connection
+      await redisClient.disconnect();
+      
+      logger.info('ThreatDetectionService cleanup completed', {
+        mlServiceCleaned: this.mlEnabled
+      });
+    } catch (error) {
+      logger.warn('ThreatDetectionService cleanup encountered errors', {
+        error: error instanceof Error ? error.message : 'Unknown error'
+      });
+    }
   }
 }

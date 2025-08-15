@@ -1,3 +1,4 @@
+import 'module-alias/register';
 import express from 'express';
 import { createServer } from 'http';
 import cors from 'cors';
@@ -9,7 +10,10 @@ import { errorHandler } from '@/middleware/error-handler';
 import { authMiddleware } from '@/middleware/auth';
 import { threatRoutes } from '@/routes/threat';
 import { healthRoutes } from '@/routes/health';
-import { WebSocketStreamService } from '@/services/websocket-stream-service';
+import { analyticsRoutes } from '@/routes/analytics';
+import { mlManagementRoutes } from '@/routes/ml-management';
+import { integrationRoutes } from '@/routes/integrations';
+import { EnhancedWebSocketStreamService } from '@/services/enhanced-websocket-stream-service';
 
 dotenv.config();
 
@@ -41,6 +45,9 @@ app.use((req, _res, next) => {
 // Routes
 app.use('/health', healthRoutes);
 app.use('/api/threat', authMiddleware, threatRoutes);
+app.use('/api/analytics', authMiddleware, analyticsRoutes);
+app.use('/api/ml', authMiddleware, mlManagementRoutes);
+app.use('/api/integrations', authMiddleware, integrationRoutes);
 
 // Error handling
 app.use(errorHandler);
@@ -50,8 +57,8 @@ app.use('*', (_req, res) => {
   res.status(404).json({ error: 'Route not found' });
 });
 
-// Initialize WebSocket streaming service
-const streamService = new WebSocketStreamService(server);
+// Initialize Enhanced WebSocket streaming service
+const streamService = new EnhancedWebSocketStreamService(server);
 
 // Start server
 server.listen(PORT, () => {
@@ -63,7 +70,28 @@ server.listen(PORT, () => {
       'behavioral-analysis', 
       'network-monitoring', 
       'threat-intelligence',
-      'websocket-streaming'
+      'enhanced-websocket-streaming',
+      'stream-multiplexing',
+      'event-aggregation',
+      'smart-filtering',
+      'adaptive-throttling',
+      'ml-relevance-scoring',
+      'advanced-analytics',
+      'trend-analysis',
+      'predictive-modeling',
+      'dashboard-metrics',
+      'bulk-operations',
+      'multi-format-export',
+      'ml-model-management',
+      'feature-importance-analysis',
+      'drift-detection',
+      'automated-retraining',
+      'prediction-explanation',
+      'webhook-integration',
+      'siem-connectivity',
+      'multi-siem-support',
+      'bidirectional-sync',
+      'automated-export'
     ],
     websocket: {
       enabled: true,
